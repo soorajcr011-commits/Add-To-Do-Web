@@ -1,0 +1,3200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no, interactive-widget=resizes-content" />
+<title>Add To Do</title>
+<meta name="theme-color" content="#141414" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    overflow: hidden; overscroll-behavior: none;
+    background: #141414;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  #app {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%;
+    background: #141414;
+    display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  header {
+    margin: 14px 14px 14px 14px;   /* 14px above "Today" (below the status bar), 14px between "Today" and the first task */
+    padding: 0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    background: none;
+    border: none;
+    position: relative; z-index: 5;
+  }
+  header h1 {
+    color: #F4F3EF; font-size: 30px; font-weight: 700;
+    letter-spacing: -0.02em; margin: 0;
+    flex: 1; text-align: left;
+  }
+  .hbtn {
+    width: 34px; height: 44px; border-radius: 12px; background: none; border: none; padding: 0;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+    position: relative; top: 1px; margin-bottom: -20px;  /* the 44px tap area must not make the header taller than the title */
+  }
+  .hbtn:last-child { margin-right: 1px; }
+  .hbtn svg { flex-shrink: 0; pointer-events: none; width: 21px; height: 21px; }
+  #instructions-btn svg, #history-btn svg { width: 22px; height: 22px; }
+  header h1 { margin-left: 0; position: relative; top: 0; }
+  #title-time { font-size: inherit; }
+  #title-date { position: relative; top: 1px; word-spacing: -2px; margin-left: 0; font-style: italic; font-size: 15px; font-weight: 600; letter-spacing: 0; color: #F4F3EF; white-space: nowrap; }
+  #emoji-toggle svg, #add-btn svg { flex-shrink: 0; pointer-events: none; }
+  #list {
+    flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 0 14px;
+    overflow-anchor: none;
+    display: flex; flex-direction: column; gap: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .row-wrap {
+    position: relative; height: var(--row-h, 68px); border-radius: 16px;
+    overflow: hidden; flex-shrink: 0;
+  }
+  .reveal {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    border-radius: 16px;
+  }
+  .reveal.right { justify-content: center; background: #2E8A57; }
+  .reveal.left { justify-content: center; background: #C0473A; }
+  .row {
+    position: relative; height: 100%; background: #1F1F1F;
+    border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 16px;
+    overflow: hidden;
+    display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab;
+  }
+  .emoji-slot { width: 26px; height: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .loop-badge {
+    position: absolute; top: 6px; right: 10px;
+    width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+  }
+  .day-picker-row {
+    height: 34px; flex-shrink: 0; align-self: center;
+    width: 100%; max-width: 358px; justify-content: space-between;
+    display: flex; align-items: center; gap: 4px;
+    overflow: hidden;
+  }
+  .day-btn {
+    flex: none; width: 34px; height: 34px; border-radius: 8px; padding: 0;
+    background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3);
+    color: #A0A0A0; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .day-btn { position: relative; }
+  .day-btn .dd { position: absolute; top: 4px; left: 4px; font-size: 8px; transform: scale(0.75); transform-origin: top left; font-weight: 600; line-height: 1; color: #A0A0A0; pointer-events: none; }  /* date number, top-left corner */
+  .day-btn.today:not(.active) .dd, .day-btn.active .dd { color: #F4F3EF; }
+  .day-btn.today:not(.active) { color: #F4F3EF; }  /* today's letter is white, the other days stay grey */
+  .day-btn.active { background: #2E8A57; border-color: #2E8A57; color: #F4F3EF; }
+  .opt-btn {
+    flex: 1; height: 34px; border-radius: 10px; padding: 0; gap: 6px;
+    background: transparent; border: 1px solid rgba(244, 243, 239, 0.3);
+    color: #F4F3EF; font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .row--held { background: #1F1F1F; }  /* held task keeps the normal task card colour, also while its picker is open */
+  .row--choose > *:not(.choose) { visibility: hidden; }
+  .choose { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 45px; padding: 0; }  /* 45px between Notify and Recur */
+  .choose button {
+    flex: none; width: 96px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; gap: 6px;
+    background: #1F1F1F; border: 0.5px solid rgba(244, 243, 239, 0.3); border-radius: 10px;
+    color: #A0A0A0; font-size: 14px; font-weight: 400; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .choose svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .choose button:nth-child(2) svg { width: 15px; height: 15px; }  /* Recur loop icon: slightly smaller so it looks the same size as the bell */
+  .time-row { justify-content: center; gap: 6px; touch-action: none; user-select: none; }
+  .tf {
+    flex: none; width: 58px; height: 34px; border-radius: 20px; border: 1px solid rgba(244, 243, 239, 0.3);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+    background: #1F1F1F; color: #A0A0A0; font-size: 13px; font-weight: 700; touch-action: none;
+  }
+  .tf > span { display: block; will-change: transform; }
+  .tf.num { color: #F4F3EF; font-size: 15px; }                            /* a number is showing */
+  .tf.set { background: #C23A3F; border-color: #C23A3F; }                /* red once released, like the green active day */
+  .bell-badge {
+    position: absolute; top: 6px; right: 10px;
+    width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+  }
+  .combo-badge { position: absolute; top: 7.5px; right: 11.5px; width: 15px; height: 15px; }
+  .combo-badge svg { position: absolute; display: block; }
+  /* Fixed layout: loop underneath at the top left, bell always on top of it at the bottom right (thin dark edge). */
+  .combo-badge .cb-loop { left: 0; top: 0; z-index: 1; }
+  .combo-badge .cb-bell { right: -1.82px; bottom: 0; z-index: 2; filter: drop-shadow(0 0 0.8px #1F1F1F) drop-shadow(0 0 0.8px #1F1F1F); }
+  .row--combo .bell-badge, .row--combo .loop-badge { display: none; }  /* loop + bell together show one combined icon */
+  .bell-badge svg, .loop-badge svg { display: block; flex: none; margin: 0; }  /* both icons centred on the same vertical line */
+  .task-text {
+    flex: 1; color: #F4F3EF; font-size: 16px; line-height: 19px; font-weight: 400;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    margin-right: 16px;
+  }
+  #undo-toast {
+    position: absolute; bottom: calc(86px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+    background: #1F1F1F; border: 0.5px solid rgba(244, 243, 239, 0.3); border-radius: 16px;
+    padding: 8px 14px; display: none; align-items: center; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    z-index: 50;
+  }
+  #undo-toast.show { display: flex; animation: toastIn 0.18s ease-out; }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(6px);} to { opacity: 1; transform: translateX(-50%) translateY(0);} }
+  #undo-btn { background: none; border: none; padding: 0; display: flex; cursor: pointer; }
+  /* Reordering: a screen-colour rectangle sits under the dragged card and above the cards sliding past it,
+     and screen-colour strips close off the top / bottom edge while the card is pushed against them. */
+  .drag-mask { position: absolute; inset: -1px; border-radius: 17px; background: #141414; z-index: 1; pointer-events: none; will-change: transform; }
+  .edge-mask { position: fixed; display: none; background: #141414; z-index: 6; pointer-events: none; }
+  .edge-mask.on { display: block; }
+  footer { padding: 8px 24px calc(14px - var(--bottom-trim, 0px)) 24px; margin-top: auto; flex-shrink: 0; background: #141414; transition: padding 0.2s cubic-bezier(0.2, 0.7, 0.1, 1); position: relative; z-index: 5; }
+  footer:focus-within { padding-left: 18px; padding-right: 18px; }
+  /* closed: inner padding is back to 10px, so the icon, placeholder and + keep their original gap to the box edges */
+  footer:focus-within .input-bar { padding: 0 10px; }  /* open: box is 6px narrower per side and the icon, text and + keep their original gap to the box edges */  /* while typing: add button centre lines up with the list button centre */
+  /* The chat box, the page bottom and the built-in keyboard all animate with the same 0.2s curve, so opening and
+     closing glide together. (The phone's own keyboard no longer resizes the page, so animating on touch is safe.) */
+  #app { transition: padding-bottom 0.2s cubic-bezier(0.2, 0.7, 0.1, 1); }
+  /* Built-in keyboard (touch screens only). It sits under the chat box inside the page, so the phone's own
+     keyboard never opens and the page is never resized by it. */
+  #kb { flex-shrink: 0; height: 0; overflow: hidden; margin: 0; background: #141414; user-select: none; -webkit-user-select: none;
+        touch-action: manipulation; transition: height 0.2s cubic-bezier(0.2, 0.7, 0.1, 1); position: relative; z-index: 4; }
+  #kb.open { height: calc(216px + env(safe-area-inset-bottom)); }
+  #app.kb-open { padding-bottom: 0; }
+  #app.kb-open footer { padding-bottom: 14px; }  /* exactly 14px between the chat box and the keyboard */
+  #kb .kb-in { padding: 0 24px calc(16px + env(safe-area-inset-bottom)) 24px; display: flex; flex-direction: column; gap: 8px; }
+  .kb-row { display: flex; gap: 5px; justify-content: center; }
+  .kb-key { flex: 1 1 0; min-width: 0; height: 44px; border-radius: 8px; background: #1F1F1F; border: 0.5px solid rgba(244, 243, 239, 0.3); color: #F4F3EF; font-size: 20px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .kb-key.fn { background: #1F1F1F; font-size: 15px; }
+  .kb-key.on { background: #F4F3EF; color: #000000; border-color: #F4F3EF; }
+  .kb-key.act { background: #F4F3EF; color: #000000; border-color: #F4F3EF; }
+  .kb-key.down { background: #2E2E2E; }
+  .kb-key.act.down { background: #CFCEC9; }
+  .kb-key svg { pointer-events: none; }
+  .kb-spacer { flex: 0.5 1 0; }
+  footer::before {
+    content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 1px;
+    background: #141414; opacity: 0; pointer-events: none; transition: opacity 0.12s ease;
+  }
+  footer.scrolling::before { opacity: 1; }
+  .input-bar {
+    display: flex; align-items: center; background: #1F1F1F;
+    border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 28px; height: 52px; padding: 0 10px; gap: 6px;
+    transition: padding 0.2s cubic-bezier(0.2, 0.7, 0.1, 1);
+  }
+  #task-input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: #F4F3EF; font-size: 16px; line-height: 20px; margin-left: 2px;
+    padding: 0; text-align: left; margin-top: 4px;
+  }
+  #task-input::placeholder { color: #A0A0A0; font-style: normal; font-size: 17px; }
+  #add-btn {
+    width: 30px; height: 30px; border-radius: 50%; background: #F4F3EF; border: none;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+    margin-right: 4px;
+  }
+  #emoji-toggle {
+    width: 38px; height: 38px; border-radius: 50%; background: transparent; border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  #emoji-panel {
+    display: none; overflow-x: auto; background: #141414; white-space: nowrap; gap: 6px;
+    padding: 0 4px 8px 4px; -webkit-overflow-scrolling: touch;
+  }
+  #emoji-panel.show { display: flex; }
+  #emoji-panel button, .my-emoji-btn, .available-emoji-btn {
+    flex-shrink: 0; width: 38px; height: 38px; border-radius: 12px;
+    background: #000000; border: 1px solid #2A2A2A; font-size: 18px; padding: 0;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    box-sizing: border-box;
+  }
+  #emoji-panel { gap: 4px; }
+  #emoji-panel button, .my-emoji-btn, .available-emoji-btn { background: transparent; border-color: transparent; }
+  .my-emoji-btn:focus, .available-emoji-btn:focus, .my-emoji-btn:active, .available-emoji-btn:active { border-color: transparent; }
+  #emoji-panel button { flex: 0 0 calc((100% - 32px) / 9); width: auto; height: auto; aspect-ratio: 1 / 1; }
+  .row--flash-green { background: #2E8A57 !important; border-color: transparent !important; transition: background 0.15s ease; }
+  .row--flash-green .task-text, .row--flash-green .emoji-slot, .row--flash-green .loop-badge, .row--flash-green .bell-badge, .row--flash-green .combo-badge { opacity: 0; transition: none; }
+  .row--flash-red { background: #C0473A !important; border-color: transparent !important; transition: background 0.15s ease; }
+  .row--flash-red .task-text, .row--flash-red .emoji-slot, .row--flash-red .loop-badge, .row--flash-red .bell-badge, .row--flash-red .combo-badge { opacity: 0; transition: none; }
+  .row--flash-white { background: #F4F3EF !important; border-color: transparent !important; transition: background 0.15s ease; }
+  .row--flash-white .task-text, .row--flash-white .emoji-slot, .row--flash-white .loop-badge, .row--flash-white .bell-badge, .row--flash-white .combo-badge { opacity: 0; transition: none; }
+  .center-delete-icon {
+    position: absolute; top: 50%; left: 50%; z-index: 5;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: translate(-50%, -50%) scale(0.3);
+    animation: deleteIconZoom 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes deleteIconZoom {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+    60% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  .center-action-icon {
+    position: absolute; top: 50%; left: 50%; z-index: 5;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: translate(-50%, -50%) scale(0.3);
+    animation: deleteIconZoom 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  #history-overlay {
+    position: fixed; inset: 0; background: rgba(10,10,10,0.72);
+    display: none; z-index: 100;
+  }
+  #history-overlay.show { display: block; animation: overlayIn 0.18s ease-out; }
+  @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+  #history-panel {
+    position: absolute; top: var(--panel-top, calc(env(safe-area-inset-top) + 81px));
+    left: 14px; right: 14px;
+    bottom: var(--panel-bottom, calc(74px + env(safe-area-inset-bottom)));
+    background: #141414;
+    border-radius: 16px; border: 1px solid rgba(244, 243, 239, 0.3);
+    padding: 18px; display: flex; flex-direction: column;
+    transform: scale(0.92); opacity: 0; transform-origin: top right;
+    transition: transform 0.18s ease-out, opacity 0.18s ease-out;
+    -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+    box-sizing: border-box;
+  }
+  #history-overlay.show #history-panel { transform: scale(1); opacity: 1; }
+  .history-head {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 22px; margin-bottom: 15px; flex-shrink: 0;   /* 15px = 14px visible gap from the bottom of the day name's letters (the tail of the y in Today/Monday) to the first card; same 22px title row as Instruction and Customize, so the day name sits at the same height; the 36px arrows stay centred on the title and overflow equally above and below */
+  }
+  .history-head h2 { color: #F4F3EF; font-size: 22px; line-height: 1; font-weight: 700; margin: 0; }
+  #history-list {
+    overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .history-row {
+    display: flex; align-items: center; gap: 10px;
+    position: relative;
+    background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 16px; padding: 10px 14px 13px;
+  }
+  .history-icon {
+    width: 24px; height: 24px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700;
+  }
+  .history-icon.tick { color: #4CC97F; }
+  .history-icon.cross { color: #E5484D; }
+  .history-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .history-time { position: absolute; bottom: 4px; right: 14px; white-space: nowrap; color: #8C8C8C; font-size: 8px; line-height: 8px; font-weight: 600; letter-spacing: 0.2px; pointer-events: none; }  /* bottom-right corner, below the tick/cross badge */
+  .history-text {
+    flex: none; color: #F4F3EF; font-size: 14px; line-height: 18px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .history-empty {
+    color: #A0A0A0; font-style: italic; text-align: center;
+    padding: 34px 0; font-size: 14px;
+  }
+  /* Main screen with no tasks: looks like History's empty area, as if History filled the whole screen - the note sits near
+     the top, centred, with the same spacing below the top edge, and the spacing and text size scale with the screen.
+     Its position is anchored to the top, so it does not move when the keyboard or a picker opens. */
+  /* Scroll-end fix: card heights can be fractions of a pixel, and a list can only scroll to whole pixels, so the last card's
+     bottom border could end up a fraction of a pixel below the list edge and be clipped. This invisible end piece (0 high; the
+     negative margin cancels the 8px gap) adds just the missing fraction, so scrolling ends exactly on the last card. */
+  #list::after { content: ""; flex: none; height: 0; margin-top: calc(var(--end-fix, 0px) - 8px); }
+  #list:empty::before {
+    content: "Nothing here yet."; flex: none; display: block; align-self: stretch;
+    color: #A0A0A0; font-style: italic; text-align: center; line-height: 1.2;
+    padding: clamp(48px, 6.9vh, 70px) 0 0; font-size: 18px;
+  }
+  .history-sub {
+    color: #8C8C8C; font-size: 12px; margin: -8px 0 12px; flex-shrink: 0;
+  }
+  .history-nav {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .history-arrow {
+    width: 36px; height: 36px; border-radius: 0; flex-shrink: 0;
+    background: transparent; border: none; color: #F4F3EF;
+    font-size: 30px; line-height: 1; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; padding: 0;
+  }
+  .history-arrow:disabled { opacity: 0.28; pointer-events: none; }
+
+  /* Emoji customization */
+  #emoji-customize {
+    position: fixed; inset: 0; background: rgba(10,10,10,0.72);
+    display: none; z-index: 90;
+  }
+  #emoji-customize.show { display: block; animation: overlayIn 0.18s ease-out; }
+  #emoji-customize-panel {
+    position: absolute; top: var(--panel-top, calc(env(safe-area-inset-top) + 81px));
+    left: 14px; right: 14px;
+    bottom: var(--panel-bottom, calc(74px + env(safe-area-inset-bottom)));
+    background: #141414;
+    border-radius: 16px; border: 1px solid rgba(244, 243, 239, 0.3);
+    padding: 18px; display: flex; flex-direction: column;
+    overflow: hidden;
+    transform: scale(0.92); opacity: 0; transform-origin: top left;
+    transition: transform 0.18s ease-out, opacity 0.18s ease-out;
+    -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+    box-sizing: border-box;
+  }
+  #emoji-customize.show #emoji-customize-panel { transform: scale(1); opacity: 1; }
+  .customize-head { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 11px; flex-shrink: 0; }
+  .customize-head h2 { color: #F4F3EF; font-size: 22px; line-height: 1; font-weight: 700; margin: 0; }  /* line-height 1 + 11px margin = 14px visible gap from the "Customize" letters to the My Emojis box */
+  
+  .my-emojis-box {
+    background: #1F1F1F;
+    border: 1px solid rgba(244, 243, 239, 0.3);
+    border-radius: 16px;
+    padding: 8px 8px;  /* 8px + 1px border = 9px, same side inset as the Exchange grid, so slot widths match */
+    margin-bottom: 5px;
+    flex-shrink: 0;
+    transition: background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  #my-emojis { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(6, auto); gap: 6px; counter-reset: slot; }
+  /* Slot numbers 1-48 (6 rows x 8 columns), no borders. Drawn with a counter so they stay put when emojis are swapped. */
+  #my-emojis .my-emoji-btn {
+    border: none; counter-increment: slot;
+    flex-direction: column-reverse; justify-content: center; gap: 2px;
+    aspect-ratio: 1 / 1; height: auto; padding: 0; line-height: 1;  /* square slots, same size and 6px gaps as the Exchange grid */
+  }
+  #my-emojis .my-emoji-btn::before {
+    content: counter(slot); display: block;
+    font-size: 8px; line-height: 1; font-weight: 600; color: #6E6E6E;
+    pointer-events: none;
+  }
+
+  .customize-scroll-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+    padding-top: 2px;
+    padding-bottom: 4px;
+  }
+  .customize-scroll-body.scroll-locked {
+    overflow-y: hidden !important;
+    touch-action: none !important;
+  }
+
+  #available-emojis {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+    padding: 0 9px;
+    touch-action: pan-y;
+  }
+
+  .my-emoji-btn, .available-emoji-btn {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    height: auto;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+  }
+  .my-emoji-btn, .available-emoji-btn, #emoji-panel button { outline: none; }
+  .my-emoji-btn:focus, .available-emoji-btn:focus, .my-emoji-btn:active, .available-emoji-btn:active { border-color: transparent; }
+  .available-emoji-btn { touch-action: pan-y; cursor: grab; }
+  .my-emoji-btn { touch-action: none; cursor: default; }
+
+  .my-emoji-btn.drop-target {
+    background: #2E2E2E !important;
+    transform: scale(1.16);
+    z-index: 10;
+  }
+  .my-emoji-btn.replace-flash, .available-emoji-btn.replace-flash {
+    animation: replaceFlash 0.32s ease-out;
+  }
+  @keyframes replaceFlash {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.24); background: #383838; }
+    100% { transform: scale(1); }
+  }
+  .available-emoji-btn.drag-source { opacity: 0.35; transform: scale(0.92); }
+
+  #emoji-drag-ghost {
+    position: fixed; top: 0; left: 0; width: 44px; height: 44px;
+    border-radius: 14px; background: #252525;
+    border: none;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
+    display: none; align-items: center; justify-content: center;
+    font-size: 24px; pointer-events: none; z-index: 9999;
+    transform: translate(-50%, -50%) scale(1.12);
+    transition: transform 0.08s ease-out;
+  }
+  #emoji-drag-ghost.active { display: flex; }
+
+  /* Instructions */
+  #instructions-overlay {
+    position: fixed; inset: 0; background: rgba(10,10,10,0.72);
+    display: none; z-index: 110;
+  }
+  #instructions-overlay.show { display: block; animation: overlayIn 0.18s ease-out; }
+  #instructions-panel {
+    position: absolute; top: var(--panel-top, calc(env(safe-area-inset-top) + 81px));
+    left: 14px; right: 14px;
+    bottom: var(--panel-bottom, calc(74px + env(safe-area-inset-bottom)));
+    background: #141414;
+    border-radius: 16px; border: 1px solid rgba(244, 243, 239, 0.3);
+    padding: 18px; display: flex; flex-direction: column;
+    transform: scale(0.92); opacity: 0; transform-origin: top;
+    transition: transform 0.18s ease-out, opacity 0.18s ease-out;
+    -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+    box-sizing: border-box;
+  }
+  #instructions-overlay.show #instructions-panel { transform: scale(1); opacity: 1; }
+  .instructions-head { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 11px; flex-shrink: 0; }
+  .instructions-head h2 { color: #F4F3EF; font-size: 22px; line-height: 1; font-weight: 700; margin: 0; }  /* line-height 1 + 11px margin = 14px visible gap from the "Instruction" letters to the first card */
+  #instructions-scroll {
+    flex: 1; min-height: 0; overflow-y: auto;
+    -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .instruction-card {
+    background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3);
+    border-radius: 16px; padding: 14px; flex-shrink: 0;
+  }
+  #instructions-list {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .instruction-card-heading {
+    color: #F4F3EF; font-size: 16px; font-weight: 700; margin: 0 0 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .instruction-card-steps { margin: 0; padding: 0 0 0 4px; list-style: none; }
+  .instruction-card-steps li {
+    color: #D6D5D0; font-size: 14px; line-height: 19px;
+    padding-left: 14px; position: relative; margin-bottom: 4px;
+  }
+  .instruction-card-steps li::before {
+    content: "•"; position: absolute; left: 0; color: #8C8C8C;
+  }
+  .instruction-card-note {
+    color: #8C8C8C; font-size: 12.5px; line-height: 17px; font-style: italic;
+    margin: 10px 0 0; padding-top: 10px; border-top: 1px solid rgba(244, 243, 239, 0.08);
+  }
+  #instructions-confirm-row {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    flex-shrink: 0; padding: 10px;
+  }
+  #instructions-confirm-text {
+    flex: 1; color: #D6D5D0; font-size: 13.5px; line-height: 18px; text-align: left;
+  }
+  #instructions-checkbox {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0; margin: 0;
+    background: transparent; border: 1.5px solid rgba(244, 243, 239, 0.4);
+    cursor: pointer; position: relative;
+  }
+  #instructions-checkbox:checked { border-color: rgba(244, 243, 239, 0.6); }
+  #instructions-checkbox:checked::after {
+    content: "✓"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #F4F3EF; font-size: 15px; font-weight: 700; line-height: 1;
+  }
+  #instructions-understood-btn {
+    align-self: flex-end; margin-top: 4px;
+    background: #2E8A57; color: #F4F3EF; border: none; border-radius: 12px;
+    font-size: 14px; font-weight: 700; padding: 10px 20px; cursor: pointer;
+  }
+  #instructions-understood-btn:disabled { background: #2A2A2A; color: #6E6E6E; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1 id="app-title">Today<span id="title-date"></span></h1>
+    <button id="instructions-btn" class="hbtn" type="button" aria-label="Instruction">
+      <svg width="24" height="24" viewBox="0 0 24 24" stroke="#F4F3EF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"><circle cx="12" cy="12" r="9.5"/><line x1="12" y1="11" x2="12" y2="16.5"/><line x1="12" y1="7.6" x2="12.01" y2="7.6"/></svg>
+    </button>
+    <button id="emoji-edit-btn" class="hbtn" type="button" aria-label="Emoji customize">
+      <svg width="24" height="24" viewBox="0 0 24 24" stroke="#F4F3EF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M22 11v1a10 10 0 1 1-9-10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/><path d="M16 5h6"/><path d="M19 2v6"/></svg>
+    </button>
+    <button id="history-btn" class="hbtn" type="button" aria-label="Task history">
+      <svg width="24" height="24" viewBox="0 0 24 24" stroke="#F4F3EF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+    </button>
+  </header>
+  <div id="list"></div>
+  <footer>
+    <div id="emoji-panel"></div>
+    <div class="input-bar">
+      <button id="emoji-toggle" aria-label="Choose emoji">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0A0A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <circle cx="9" cy="10" r="0.7" fill="#A0A0A0" stroke="none"/>
+          <circle cx="15" cy="10" r="0.7" fill="#A0A0A0" stroke="none"/>
+          <path d="M8.5 14.5c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8"/>
+        </svg>
+      </button>
+      <input id="task-input" placeholder="Add What To Do..." />
+      <button id="add-btn" aria-label="Add task">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  </footer>
+  <div id="undo-toast">
+    <button id="undo-btn" aria-label="Undo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F4F3EF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+    </button>
+  </div>
+
+  <div id="emoji-customize" aria-hidden="true">
+    <div id="emoji-customize-panel">
+      <div class="customize-head"><h2>Customize</h2></div>
+      <div class="my-emojis-box" id="my-emojis-box">
+        <div id="my-emojis"></div>
+      </div>
+      <div class="customize-scroll-body" id="customize-scroll-body">
+        <div id="available-emojis"></div>
+      </div>
+    </div>
+  </div>
+  <div id="emoji-drag-ghost"></div>
+  <div id="history-overlay">
+    <div id="history-panel">
+      <div class="history-head">
+        <h2 id="history-title">Today</h2>
+        <div class="history-nav">
+          <button id="history-prev" class="history-arrow" type="button" aria-label="Previous day">‹</button>
+          <button id="history-next" class="history-arrow" type="button" aria-label="Next day">›</button>
+        </div>
+      </div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+  <div id="instructions-overlay">
+    <div id="instructions-panel">
+      <div class="instructions-head">
+        <h2>Instruction</h2>
+      </div>
+      <div id="instructions-scroll">
+        <div id="instructions-list"></div>
+        <div id="instructions-confirm-row">
+          <div id="instructions-confirm-text">If you want to come back to this page later just tap the info icon at the top.</div>
+          <input type="checkbox" id="instructions-checkbox" />
+        </div>
+        <button id="instructions-understood-btn" type="button" disabled>Understood</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  let ROW_HEIGHT = 68; // auto-fitted so VISIBLE_ROWS cards fill the list (see updateRowHeight)
+  const VISIBLE_ROWS = 9;
+  const ROW_GAP = 8;
+  const LIST_PAD_BOTTOM = 0; // must match #list padding-bottom in CSS
+  let ROW_PITCH = ROW_HEIGHT + ROW_GAP;
+  const PICKER_HEIGHT = 34;
+  const REORDER_THRESHOLD = 1.1;
+  const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"]; // Sun..Sat, matches Date#getDay()
+  const LOOP_ICON_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4CC97F" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
+  function hasActiveLoop(task) { return !!(task.repeatDays && task.repeatDays.some(Boolean)); }
+  const DEMO_TASKS = [
+    { id: "demo1", text: "Complete the pending work and send the final update by evening", icon: "✅", repeatDays: null },
+    { id: "demo2", text: "Prepare for tomorrow's meeting and note down the key points", icon: "🎯", repeatDays: null },
+    { id: "demo3", text: "Pay pending bills and recharge the phone before the due date", icon: "📌", repeatDays: null },
+  ];
+
+
+  const STORAGE_KEY = "todo-list-tasks";
+
+  function loadTasks() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+        // An empty array is a legitimate saved state (every task resolved) -
+        // only fall back to the demo tasks when nothing has ever been saved.
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [...DEMO_TASKS];
+  }
+
+  // ---- Reminders: one-off timed notification per task (task.remindAt = {h,m,s}) ----
+  const rem = {};
+  // Notify + Recur: a 10px loop with a 10px red outline bell filled with the card colour in front, in one 14px x 14px icon (like the two masks emoji).
+  function comboIconSvg() {
+    const bell = BELL_SVG.replace(/width="11" height="11"/, 'width="11.46" height="11.46"').replace('fill="none"', 'fill="#1F1F1F"').replace(/currentColor/g, "#E5484D").replace('stroke-width="2"', 'stroke-width="2.6"').replace("<svg ", '<svg class="cb-bell" ');
+    const loop = LOOP_ICON_SVG.replace('width="15" height="15"', 'width="10.71" height="10.71"').replace("<svg ", '<svg class="cb-loop" ');
+    return loop + bell;
+  }
+  function refreshComboBadge(rowEl) {
+    if (!rowEl) return;
+    const both = !!(rowEl.querySelector(".bell-badge") && rowEl.querySelector(".loop-badge"));
+    let c = rowEl.querySelector(".combo-badge");
+    rowEl.classList.toggle("row--combo", both);
+    if (both && !c) {
+      c = document.createElement("div"); c.className = "combo-badge"; c.innerHTML = comboIconSvg(); rowEl.appendChild(c);
+    } else if (!both && c) c.remove();
+  }
+  const BELL_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const remLN = () => window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications;
+  function remKey(id) { let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) | 0; return (Math.abs(h) % 2147483000) + 1; }
+  function cancelRem(id) {
+    const r = rem[id]; if (!r) return;
+    clearTimeout(r.timer);
+    const LN = remLN(); if (LN) LN.cancel({ notifications: [{ id: r.key }] }).catch(() => {});
+    delete rem[id];
+  }
+  function askNotifyPermission() {
+    // Called when the person taps Notify, so the permission prompt appears then (not while saving).
+    const LN = remLN();
+    if (LN) { LN.requestPermissions().catch(() => {}); return; }
+    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
+  }
+  function scheduleRem(t, at, sig) {
+    const title = (t.icon ? t.icon + " " : "") + t.text, key = remKey(t.id), LN = remLN();
+    const r = rem[t.id] = { sig, key, timer: null };
+    if (LN) {
+      // Only check (never ask) here: the permission prompt belongs to the Notify tap, not to opening the app or saving.
+      LN.checkPermissions().then((p) => {
+        if (p.display === "granted") LN.schedule({ notifications: [{ id: key, title, body: "", smallIcon: "ic_stat_icon_config_sample", largeIcon: "ic_large_reminder", iconColor: "#FFFFFF", schedule: { at: new Date(at), allowWhileIdle: true } }] });
+      }).catch(() => {});
+      return;
+    }
+    // Fallback (browser / PWA): only fires while the app is open (and only if notifications are already allowed).
+    r.timer = setTimeout(() => {
+      delete rem[t.id];
+      if ("Notification" in window && Notification.permission === "granted") { try { new Notification(title); } catch (e) {} }
+    }, Math.max(0, at - Date.now()));
+  }
+  function syncReminders() {
+    const live = {};
+    tasks.forEach((t) => {
+      if (!t.remindAt) return;
+      live[t.id] = 1;
+      const d = new Date(); d.setHours(t.remindAt.h, t.remindAt.m, t.remindAt.s, 0);
+      const at = d.getTime(), sig = at + "|" + t.icon + t.text;
+      if (rem[t.id] && rem[t.id].sig === sig) return;
+      cancelRem(t.id);
+      if (at > Date.now()) scheduleRem(t, at, sig);
+    });
+    Object.keys(rem).forEach((id) => { if (!live[id]) cancelRem(id); });
+    try { syncLoopAhead(); } catch (e) {}
+  }
+  // Native app: a looping task's reminder must also fire on days when the app hasn't been opened yet
+  // (the day's task only appears on the main screen once the app opens). So the next few looped days
+  // are scheduled ahead. Once a day's task is on the main screen, that task's own reminder takes over
+  // (and ticking / crossing / deleting it cancels it).
+  const REM_AHEAD_KEY = "todo-remahead-v1", REM_AHEAD_DAYS = 7;
+  let remAhead = {};
+  try { remAhead = JSON.parse(localStorage.getItem(REM_AHEAD_KEY) || "{}") || {}; } catch (e) { remAhead = {}; }
+  function syncLoopAhead() {
+    const LN = remLN(); if (!LN) return;
+    const wanted = {};
+    const today = todayStr();
+    Object.keys(loopTemplates).forEach((loopId) => {
+      const tpl = loopTemplates[loopId];
+      if (!tpl || !tpl.remindAt || !tpl.repeatDays) return;
+      for (let d = 1; d <= REM_AHEAD_DAYS; d++) {
+        const ds = addDaysToDateStr(today, d);
+        if (!tpl.repeatDays[weekdayForDateStr(ds)]) continue;
+        const [y, m, dd] = ds.split("-").map(Number);
+        const at = new Date(y, m - 1, dd, tpl.remindAt.h, tpl.remindAt.m, tpl.remindAt.s, 0).getTime();
+        wanted[loopId + "|" + ds] = { at, sig: at + "|" + tpl.icon + tpl.text, title: (tpl.icon ? tpl.icon + " " : "") + tpl.text };
+      }
+    });
+    let changed = false;
+    Object.keys(remAhead).forEach((k) => {
+      if (!wanted[k] || wanted[k].sig !== remAhead[k].sig) {
+        LN.cancel({ notifications: [{ id: remAhead[k].key }] }).catch(() => {});
+        delete remAhead[k]; changed = true;
+      }
+    });
+    const todo = Object.keys(wanted).filter((k) => !remAhead[k] && wanted[k].at > Date.now());
+    if (todo.length) {
+      LN.checkPermissions().then((p) => {
+        if (p.display !== "granted") return;
+        todo.forEach((k) => {
+          const w = wanted[k], key = remKey("ahead|" + k);
+          LN.schedule({ notifications: [{ id: key, title: w.title, body: "", smallIcon: "ic_stat_icon_config_sample", largeIcon: "ic_large_reminder", iconColor: "#FFFFFF", schedule: { at: new Date(w.at), allowWhileIdle: true } }] });
+          remAhead[k] = { key, sig: w.sig };
+        });
+        try { localStorage.setItem(REM_AHEAD_KEY, JSON.stringify(remAhead)); } catch (e) {}
+      }).catch(() => {});
+    }
+    if (changed) { try { localStorage.setItem(REM_AHEAD_KEY, JSON.stringify(remAhead)); } catch (e) {} }
+  }
+  function updateBellBadge(wrapEl, task) {
+    const rowEl = wrapEl.querySelector(".row"); if (!rowEl) return;
+    let b = rowEl.querySelector(".bell-badge");
+    const r = task.remindAt;
+    if (r) {
+      if (!b) { b = document.createElement("div"); b.className = "bell-badge"; rowEl.appendChild(b); }
+      b.innerHTML = BELL_SVG.replace(/width="11" height="11"/, 'width="15.96" height="15.96"').replace(/currentColor/g, "#E5484D").replace('stroke-width="2"', 'stroke-width="2.3"');
+    } else if (b) b.remove();
+    refreshComboBadge(rowEl);
+  }
+
+  function saveTasks() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    } catch (e) {}
+    try { syncReminders(); } catch (e) {}
+  }
+
+  let tasks = loadTasks();
+  let lastRemoved = null;
+  setTimeout(() => { try { syncReminders(); } catch (e) {} }, 0);
+  let lastHistoryId = null;
+  let undoTimer = null;
+  let uid = 1;
+  let activeGestureId = null;
+  let historyPanelOpen = false;
+  let tapTimer = null;
+  let tapTaskId = null;
+  let openPickerTaskId = null;
+  let openPickerEl = null;
+
+  const HISTORY_KEY = "todo-history-v1";
+
+  function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function dateStrOf(d) {
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function parseDateStr(dateStr) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function addDaysToDateStr(dateStr, days) {
+    const d = parseDateStr(dateStr);
+    d.setDate(d.getDate() + days);
+    return dateStrOf(d);
+  }
+
+  function weekdayForDateStr(dateStr) {
+    return parseDateStr(dateStr).getDay();
+  }
+
+  function loadHistory() {
+    try {
+      const saved = localStorage.getItem(HISTORY_KEY);
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object" && Array.isArray(parsed.entries)) {
+          return parsed; // may be from an earlier day; ensureHistoryFresh() below rolls it over
+        }
+      }
+    } catch (e) {}
+    return { date: todayStr(), entries: [] };
+  }
+
+  function saveHistory() {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {}
+  }
+
+  let history = loadHistory();
+
+  const LOOP_KEY = "todo-looptemplates-v1";
+
+  function loadLoopTemplates() {
+    try {
+      const saved = localStorage.getItem(LOOP_KEY);
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    } catch (e) {}
+    // Fresh install (no saved tasks yet): register the looping demo tasks so they keep recurring.
+    const seeded = {};
+    try {
+      if (localStorage.getItem(STORAGE_KEY) === null) {
+        DEMO_TASKS.forEach((t) => { if (t.loopId) seeded[t.loopId] = { text: t.text, icon: t.icon, repeatDays: t.repeatDays.slice(), remindAt: t.remindAt ? { ...t.remindAt } : null }; });
+      }
+    } catch (e) {}
+    return seeded;
+  }
+
+  function saveLoopTemplates() {
+    try { localStorage.setItem(LOOP_KEY, JSON.stringify(loopTemplates)); } catch (e) {}
+  }
+
+  // loopId -> { text, icon, repeatDays }. Independent of any single day's
+  // task/history list, so a task's loop survives even if it drops out of the
+  // list for one or more days between its selected weekdays.
+  let loopTemplates = loadLoopTemplates();
+
+  const ARCHIVE_KEY = "todo-historyarchive-v1";
+  const ARCHIVE_RETENTION_DAYS = 6;
+
+  function loadArchive() {
+    try {
+      const saved = localStorage.getItem(ARCHIVE_KEY);
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    } catch (e) {}
+    return {};
+  }
+
+  function saveArchive() {
+    try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(historyArchive)); } catch (e) {}
+  }
+
+  function pruneArchive() {
+    const cutoff = addDaysToDateStr(todayStr(), -ARCHIVE_RETENTION_DAYS);
+    Object.keys(historyArchive).forEach((dateStr) => {
+      if (dateStr < cutoff) delete historyArchive[dateStr];
+    });
+  }
+
+  // dateStr -> entries[]. Unlike `history` (which only ever holds the
+  // current day and gets wiped on rollover), this persists so past days
+  // remain browsable, capped to the last ARCHIVE_RETENTION_DAYS days.
+  let historyArchive = loadArchive();
+
+  // The earliest day the History panel is allowed to page back to - either
+  // the day this install first ran, or the archive prune cutoff, whichever
+  // is more recent (no point paging into a range that's already pruned).
+  const FIRSTUSE_KEY = "todo-firstuse-date-v1";
+  function loadFirstUseDate() {
+    try {
+      const saved = localStorage.getItem(FIRSTUSE_KEY);
+      if (saved) return saved;
+    } catch (e) {}
+    const t = todayStr();
+    try { localStorage.setItem(FIRSTUSE_KEY, t); } catch (e) {}
+    return t;
+  }
+  let firstUseDate = loadFirstUseDate();
+  function historyFloorDate() {
+    const cutoff = addDaysToDateStr(todayStr(), -ARCHIVE_RETENTION_DAYS);
+    return firstUseDate > cutoff ? firstUseDate : cutoff;
+  }
+
+  // uid must continue past every id already saved (tasks, in-flight loop
+  // ids, and loopTemplates keys) - otherwise a fresh session could hand out
+  // a loopId that collides with one already persisted from an earlier
+  // session and silently overwrite that older task's loop settings.
+  (function reseedUid() {
+    let maxSeen = 0;
+    const scan = (idStr) => {
+      const m = /^(?:t|loop)(\d+)$/.exec(idStr || "");
+      if (m) maxSeen = Math.max(maxSeen, parseInt(m[1], 10));
+    };
+    tasks.forEach((t) => { scan(t.id); scan(t.loopId); });
+    Object.keys(loopTemplates).forEach(scan);
+    history.entries.forEach((en) => scan(en.loopId));
+    Object.values(historyArchive).forEach((arr) => { if (Array.isArray(arr)) arr.forEach((en) => scan(en.loopId)); });
+    uid = maxSeen + 1;
+  })();
+
+  // Recurrence is decided by loopTemplates (persistent, independent of any
+  // single day) so a task keeps looping on its selected weekdays even after
+  // a gap where it wasn't in the list. The day's own history is used only
+  // to order that day's regenerated tasks the same way they last appeared.
+  // targetDateStr is the day being rolled INTO (i.e. the day after
+  // `history.date`), so multi-day gaps can be replayed one real day at a
+  // time instead of jumping straight to today and skipping what would have
+  // happened on the days in between.
+  function performDailyRollover(targetDateStr) {
+    if (openPickerTaskId !== null) closeOpenPicker();
+
+    // Keep the registry in sync with any edits made today (e.g. text/icon
+    // changes on a looping task still in the list) before we roll over.
+    tasks.forEach((t) => {
+      if (t.loopId && loopTemplates[t.loopId]) {
+        loopTemplates[t.loopId] = { text: t.text, icon: t.icon, repeatDays: t.repeatDays.slice(), remindAt: t.remindAt ? { ...t.remindAt } : null };
+      }
+      history.entries.push({
+        id: t.id + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        text: t.text, icon: t.icon, action: "cross",
+        repeatDays: t.repeatDays || null, loopId: t.loopId || null, silent: false,
+      });
+    });
+    saveLoopTemplates();
+
+    const targetIdx = weekdayForDateStr(targetDateStr);
+
+    // Ordering reference: once this weekday has appeared before, order by
+    // THAT SAME WEEKDAY one week back (next Monday follows last Monday),
+    // not by yesterday. Only a weekday's very first-ever occurrence (no
+    // archived same-weekday day yet) falls back to the day just closed.
+    const sameWeekdayLastWeekStr = addDaysToDateStr(targetDateStr, -7);
+    const sameWeekdayLastWeekEntries = historyArchive[sameWeekdayLastWeekStr];
+    const referenceEntries = (sameWeekdayLastWeekEntries && sameWeekdayLastWeekEntries.length)
+      ? sameWeekdayLastWeekEntries
+      : history.entries;
+
+    const regenerated = [];
+    const handledLoopIds = new Set();
+
+    // Tier 1: loops actually ticked/crossed (completed, not just deleted)
+    // on the reference day - in that day's chronological order.
+    referenceEntries.forEach((entry) => {
+      if (entry.silent) return;
+      if (entry.loopId && loopTemplates[entry.loopId] && !handledLoopIds.has(entry.loopId)) {
+        const tpl = loopTemplates[entry.loopId];
+        if (tpl.repeatDays && tpl.repeatDays[targetIdx]) {
+          regenerated.push({ id: "t" + (uid++), text: tpl.text, icon: tpl.icon, repeatDays: tpl.repeatDays.slice(), loopId: entry.loopId, remindAt: tpl.remindAt ? { ...tpl.remindAt } : null });
+          handledLoopIds.add(entry.loopId);
+        }
+      }
+    });
+
+    // Tier 2: loops that were deleted (not ticked/crossed) on the
+    // reference day - sink below every completed task, but still ahead of
+    // loops with no reference-day history at all.
+    referenceEntries.forEach((entry) => {
+      if (!entry.silent) return;
+      if (entry.loopId && loopTemplates[entry.loopId] && !handledLoopIds.has(entry.loopId)) {
+        const tpl = loopTemplates[entry.loopId];
+        if (tpl.repeatDays && tpl.repeatDays[targetIdx]) {
+          regenerated.push({ id: "t" + (uid++), text: tpl.text, icon: tpl.icon, repeatDays: tpl.repeatDays.slice(), loopId: entry.loopId, remindAt: tpl.remindAt ? { ...tpl.remindAt } : null });
+          handledLoopIds.add(entry.loopId);
+        }
+      }
+    });
+
+    // Tier 3: loops matching the target day with no reference-day history
+    // at all (e.g. created Friday, looping to Monday for the first time) -
+    // append last, in registry insertion order.
+    Object.keys(loopTemplates).forEach((loopId) => {
+      if (handledLoopIds.has(loopId)) return;
+      const tpl = loopTemplates[loopId];
+      if (tpl.repeatDays && tpl.repeatDays[targetIdx]) {
+        regenerated.push({ id: "t" + (uid++), text: tpl.text, icon: tpl.icon, repeatDays: tpl.repeatDays.slice(), loopId, remindAt: tpl.remindAt ? { ...tpl.remindAt } : null });
+        handledLoopIds.add(loopId);
+      }
+    });
+
+    tasks = regenerated;
+    saveTasks();
+  }
+
+  // Cascades through every day boundary between the last saved date and
+  // today, one real calendar day at a time - so a multi-day-closed gap
+  // still gets each intermediate day's loop matching and history archiving,
+  // instead of a single jump straight to today that would skip them.
+  function ensureHistoryFresh() {
+    const t = todayStr();
+    if (history.date === t) return;
+
+    if (t < history.date) {
+      // Clock moved backward (device time changed, DST/NTP correction, etc).
+      // There's no meaningful way to "undo" a rollover, so don't cascade -
+      // just resync the date marker and leave tasks/registry untouched.
+      history.date = t;
+      saveHistory();
+      return;
+    }
+
+    let guard = 0;
+    while (history.date !== t && guard < 3660) {
+      guard++;
+      const nextDate = addDaysToDateStr(history.date, 1);
+      performDailyRollover(nextDate);
+      historyArchive[history.date] = history.entries;
+      history = { date: nextDate, entries: [] };
+    }
+    pruneArchive();
+    saveArchive();
+    saveHistory();
+  }
+  ensureHistoryFresh(); // catches a day change that happened while the app was closed
+
+  function addHistoryEntry(task, action, silent) {
+    ensureHistoryFresh();
+    const entry = {
+      id: task.id + "-" + Date.now(), ts: Date.now(), text: task.text, icon: task.icon, action,
+      repeatDays: task.repeatDays || null, loopId: task.loopId || null, silent: !!silent,
+    };
+    history.entries.push(entry);
+    saveHistory();
+    if (historyPanelOpen) renderHistory();
+    return entry.id;
+  }
+
+  function scheduleMidnightReset() {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 2, 0);
+    setTimeout(() => {
+      ensureHistoryFresh();
+      render();
+      if (historyPanelOpen) renderHistory();
+      scheduleMidnightReset();
+    }, next - now);
+  }
+  scheduleMidnightReset();
+
+  // Mobile OSes commonly suspend timers (including the midnight setTimeout
+  // above) while the app is backgrounded/locked. Re-check the date every
+  // time the app becomes visible/focused again, so a missed day change
+  // (e.g. left overnight) is still caught on resume, not just on a full
+  // page reload.
+  function recheckDateOnResume() {
+    const before = history.date;
+    ensureHistoryFresh();
+    if (history.date !== before) {
+      render();
+      if (historyPanelOpen) renderHistory();
+    }
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") recheckDateOnResume();
+  });
+  window.addEventListener("pageshow", recheckDateOnResume);
+  window.addEventListener("focus", recheckDateOnResume);
+
+  const EMOJI_PICKER = [
+    "✅", "📝", "📌", "⏰", "🎯", "⭐", "🔥", "❗",
+    "🏠", "🧹", "🧺", "🍳", "🛒", "🍎", "☕", "💧",
+    "💼", "💻", "📞", "📧", "📅", "📊", "📁", "🤝",
+    "💰", "💳", "🧾", "📦", "🏦", "🚗", "✈️", "🔧",
+    "🏃", "🏋️", "💊", "🩺", "🛏️", "🚿", "🪥", "🧘",
+    "📚", "🎓", "❤️", "👪", "🐶", "🎉", "🎬", "🎵"
+  ];
+  const DEFAULT_ADDITIONAL = [
+    "❌", "➕", "➖", "🔄", "🔁", "🔂", "✔️", "☑️", "⚠️", "🚨", "🔔", "🔕", "⏳", "⌛", "⏱️", "⏲️",
+    "🕐", "🕰️", "🗓️", "📆", "↩️", "🆕", "🆗", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "⚫", "⚪", "🚩",
+    "🏁", "🔖", "🏷️", "📍", "📎", "🖇️", "🔗", "🔒", "🔓", "🔑", "🗝️", "💡", "🧠", "❓", "❕", "‼️",
+    "💯", "🆘", "⛔", "🚫", "⭕", "🔝", "🔜", "📣", "📢", "🔍", "👀", "✨", "🏆", "🥇", "🚀", "🗒️",
+    "📋", "🗂️", "🗃️", "🗄️", "📓", "📔", "📒", "📕", "📗", "📘", "📙", "📃", "📜", "📄", "📑", "🧮",
+    "📈", "📉", "📏", "📐", "✂️", "🖊️", "🖋️", "✏️", "🖍️", "🖌️", "🗑️", "📠", "🖨️", "🖥️", "⌨️", "🖱️",
+    "💾", "💿", "🔌", "🔋", "📡", "📶", "🌐", "☁️", "📲", "📱", "☎️", "🎧", "🎤", "📺", "📹", "📷",
+    "📸", "🖼️", "🔬", "✉️", "📨", "📩", "📤", "📥", "📮", "📬", "📭", "📪", "📫", "📰", "📖", "🗣️",
+    "💬", "💭", "🙋", "👋", "🫂", "👥", "👤", "🙏", "👍", "👎", "👏", "🙌", "💪", "🏡", "🚪", "🪟",
+    "🪑", "🛋️", "🛌", "🧸", "🪞", "🧦", "🛁", "🚽", "🚰", "🧼", "🧽", "🪣", "🧴", "🧻", "🪒", "🧵",
+    "🧥", "👕", "👖", "👗", "👔", "👚", "🧣", "🧤", "🧢", "👟", "👞", "👜", "🎒", "👓", "🕶️", "💍",
+    "👛", "💄", "💅", "💇", "🧖", "🪮", "🛎️", "🔦", "🕯️", "🧰", "🔨", "🪛", "🪚", "🔩", "⚙️", "🧲",
+    "🛠️", "🥘", "🍲", "🔪", "🥄", "🍴", "🍽️", "🍞", "🧀", "🥚", "🍗", "🍖", "🍔", "🍟", "🍕", "🥪",
+    "🍝", "🍜", "🍛", "🍚", "🥗", "🍿", "🍌", "🍅", "🥑", "🥔", "🥕", "🌽", "🥒", "🥬", "🥦", "🧄",
+    "🧅", "🍰", "🎂", "🥛", "🍵", "🧃", "🥤", "🛍️", "💵", "💴", "💶", "💷", "🪙", "💸", "🏧", "🚶",
+    "🤸", "🚴", "🏊", "⚽", "🏀", "🎾", "🏐", "🏏", "⛳", "🎳", "🩹", "🌡️", "🩸", "🦷", "😴", "🤒",
+    "🤧", "😷", "🚕", "🚌", "🚆", "🚇", "🚲", "🛵", "🏍️", "🚙", "🚚", "🛻", "🚛", "🚑", "🚒", "🚓",
+    "⛽", "🚏", "🚦", "🅿️", "⚓", "⛵", "🚢", "🛫", "🛬", "🚁", "🧳", "🗺️", "🧭", "🏨", "🏖️", "🏞️",
+    "🏜️", "🏔️", "🏕️", "⛺", "🎫", "🌳", "🌲", "🌴", "🌱", "🌿", "☘️", "🍀", "🍁", "🍂", "🌻", "🌼",
+    "🌷", "🌹", "🌸", "🌺", "💐", "🌵", "🪴", "☀️", "🌤️", "⛅", "🌥️", "🌧️", "⛈️", "🌩️", "❄️", "☃️",
+    "🌬️", "🌈", "☔", "🌙", "🌞", "🌊", "🌍", "🐱", "🐭", "🐰", "🦊", "🐧", "🐦", "🦉", "🐴", "🦄",
+    "🐝", "🦋", "🐟", "🐾", "👨", "👩", "👧", "👦", "👶", "🧒", "👴", "👵", "🧑", "🤰", "🤱", "💑",
+    "💏", "🎈", "🥳", "🎊", "🪩", "🎁", "🎀", "🍾", "🎶", "🎸", "🎹", "🎼", "🎭", "🎟️", "🕹️", "🎮",
+    "🎲", "🃏", "🧩", "🎨", "🎞️", "📽️", "ℹ️", "⚖️", "⚡", "💥", "💢", "💤", "💨", "💦", "😀", "😂",
+    "😊", "😍", "😎", "🥰", "😘", "🤗", "🤔", "😅", "😇", "🙂", "😉", "😌", "😬", "😢", "😭", "😡",
+    "🤯", "🥱", "😤", "😳", "🥺", "😮", "😱", "🤩", "🫡", "😏", "🙄", "😐", "💖", "💕", "💗", "💙",
+    "💚", "💛", "🧡", "💜", "🖤", "🤍", "🤎", "💔", "💝", "🔃", "🔙", "⏩", "🆔", "🆓", "🔰", "💲"
+  ];
+
+  const listEl = document.getElementById("list");
+  // On touch screens the list is snapped once at start-up and then left alone. Re-snapping after the keyboard
+  // opened/closed (it clears and re-sets heights and padding) is what made the chat box bounce.
+  let snappedOnceW = 0;
+  const touchScreen = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+  // Snap the list to a whole-pixel height so the browser's max scroll position is exact
+  // (a fractional height lets it stop a fraction short, clipping the last card's border).
+  // Any leftover sliver (less than one device pixel) sits below the chat box.
+  function snapListHeight() {
+    const footerEl = document.querySelector("footer");
+    footerEl.style.transition = "none";   // measure the real final layout, not a half-finished padding animation
+    const root = document.documentElement;
+    root.style.removeProperty("--bottom-trim");
+    listEl.style.flex = ""; listEl.style.height = "";
+    // The cards are sized to fill the list exactly (see applyRowFit), so the gaps stay 14px under "Today", 8px above the chat box
+    // and 14px under the chat box. The list height is snapped to a whole DEVICE pixel (finer than a CSS pixel) so the scroll
+    // end is exact; the sliver (less than one device pixel) is taken from the space below the chat box.
+    const DPR = window.devicePixelRatio || 1, Q = 1 / DPR;
+    const snapDown = (v) => Math.floor(v * DPR + 0.001) / DPR;
+    let h = listEl.getBoundingClientRect().height;
+    let whole = snapDown(h);
+    if (h - whole > 0.002) {
+      root.style.setProperty("--bottom-trim", (whole + Q - h) + "px");
+      h = listEl.getBoundingClientRect().height;
+      whole = snapDown(h);
+    }
+    if (h - whole > 0.002) { listEl.style.flex = "none"; listEl.style.height = whole + "px"; }
+    void footerEl.offsetHeight; footerEl.style.transition = "";
+    updateRowHeight();
+    snappedOnceW = window.innerWidth;
+  }
+  // Size the cards so exactly VISIBLE_ROWS fit in the list with ROW_GAP between them.
+  // Resizes caused by the on-screen keyboard opening/closing must not stretch the cards:
+  // while typing nothing changes, and after any resize we wait for the layout to settle
+  // (debounced) before re-fitting, so cards never change size frame by frame.
+  let rowFitTimer = null;
+  let rowFitDone = false;
+  // "Transient" = the layout is temporarily squeezed (keyboard or emoji panel open). Nothing
+  // may be re-measured or re-sized during that time, otherwise the cards stretch and spring.
+  let vvMaxH = Math.max(window.innerHeight, window.visualViewport ? window.visualViewport.height : 0);
+  let vvLastW = window.innerWidth;
+  function isTransient() {
+    if (window.innerWidth !== vvLastW) { vvLastW = window.innerWidth; vvMaxH = 0; }
+    const cur = Math.min(window.innerHeight, window.visualViewport ? window.visualViewport.height : window.innerHeight);
+    vvMaxH = Math.max(vvMaxH, cur, window.innerHeight);
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) return true;
+    const ep = document.getElementById("emoji-panel");
+    if (ep && ep.classList.contains("show")) return true;
+    return cur < vvMaxH - 100;
+  }
+  let snapTimer = null;
+  // The list may hold a fixed pixel height from the last snap; release it before the layout is
+  // squeezed, so the list simply flexes into the remaining space instead of overflowing.
+  function releaseListHeight() {
+    if (listEl.style.height || listEl.style.flex) { listEl.style.flex = ""; listEl.style.height = ""; }
+  }
+  function snapSoon() {
+    if (touchScreen && snappedOnceW && window.innerWidth === snappedOnceW) { if (isTransient()) releaseListHeight(); return; }
+    if (isTransient()) { releaseListHeight(); return; }
+    if (snapTimer) clearTimeout(snapTimer);
+    snapTimer = setTimeout(() => { snapTimer = null; if (!isTransient()) snapListHeight(); }, 150);
+  }
+  function applyRowFit() {
+    rowFitTimer = null;
+    if (isTransient()) return;
+    const H = listEl.getBoundingClientRect().height - LIST_PAD_BOTTOM;
+    if (H <= 0) return;
+    const rh = Math.max(48, (H - (VISIBLE_ROWS - 1) * ROW_GAP) / VISIBLE_ROWS);
+    if (Math.abs(rh - ROW_HEIGHT) < 0.01 && rowFitDone) return;
+    rowFitDone = true;
+    ROW_HEIGHT = rh;
+    ROW_PITCH = rh + ROW_GAP;
+    document.documentElement.style.setProperty("--row-h", rh + "px");
+    if (typeof fixScrollEndSoon === "function") fixScrollEndSoon();
+  }
+  function updateRowHeight() {
+    if (!rowFitDone) { applyRowFit(); return; } // first fit: immediately
+    if (rowFitTimer) clearTimeout(rowFitTimer);
+    rowFitTimer = setTimeout(applyRowFit, 400);
+  }
+  snapListHeight();
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(snapSoon);
+    ro.observe(document.getElementById("app"));
+    ro.observe(document.querySelector("footer"));
+  }
+  window.addEventListener("resize", snapSoon);
+  // Whenever the list's own height changes for any reason (header moved, fonts loaded, a footer animation finished),
+  // re-fit the cards to the exact new height, so the last visible card always ends exactly 8px above the chat box.
+  if (window.ResizeObserver) {
+    let listFitTimer = null, lastListH = -1;
+    new ResizeObserver(() => {
+      if (listFitTimer) clearTimeout(listFitTimer);
+      listFitTimer = setTimeout(() => {
+        listFitTimer = null;
+        if (isTransient()) return;
+        const h = listEl.getBoundingClientRect().height;
+        if (Math.abs(h - lastListH) < 0.01) return;
+        lastListH = h; rowFitDone = false; applyRowFit();
+      }, 120);
+    }).observe(listEl);
+  }
+  function fixScrollEnd() {
+    try {
+      if (document.querySelector(".drag-mask")) return;           // a card is being dragged: its position is not final
+      const rows = listEl.querySelectorAll(":scope > .row-wrap");
+      if (!rows.length) { listEl.style.setProperty("--end-fix", "0px"); return; }
+      const c = rows[rows.length - 1].getBoundingClientRect().bottom - listEl.getBoundingClientRect().top + listEl.scrollTop;
+      const dpr = window.devicePixelRatio || 1;
+      const frac = Math.ceil(c * dpr - 0.02) / dpr - c;   // up to the next DEVICE pixel (not CSS pixel), so the top card is never pushed under the list edge by up to 1px
+      listEl.style.setProperty("--end-fix", Math.max(0, frac).toFixed(3) + "px");
+    } catch (e) {}
+  }
+  function fixScrollEndSoon() { if (window._endFixRaf) return; window._endFixRaf = requestAnimationFrame(() => { window._endFixRaf = 0; fixScrollEnd(); }); }
+  if (window.MutationObserver) new MutationObserver(fixScrollEndSoon).observe(listEl, { childList: true });
+  window.addEventListener("resize", fixScrollEndSoon);
+  setTimeout(fixScrollEnd, 300); setTimeout(fixScrollEnd, 900);
+  // Re-fit once, after the keyboard / emoji panel has fully closed and the layout is steady.
+  document.addEventListener("focusout", () => setTimeout(snapSoon, 400));
+  document.addEventListener("focusin", releaseListHeight);
+  const emojiToggleEl = document.getElementById("emoji-toggle");
+  if (emojiToggleEl) emojiToggleEl.addEventListener("pointerdown", releaseListHeight, true);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", () => setTimeout(snapSoon, 400));
+  const inputEl = document.getElementById("task-input");
+  const addBtn = document.getElementById("add-btn");
+  const toastEl = document.getElementById("undo-toast");
+  const undoBtn = document.getElementById("undo-btn");
+  const emojiToggle = document.getElementById("emoji-toggle");
+  const emojiPanel = document.getElementById("emoji-panel");
+  const historyBtn = document.getElementById("history-btn");
+  const historyOverlay = document.getElementById("history-overlay");
+  const historyListEl = document.getElementById("history-list");
+  const historyTitleEl = document.getElementById("history-title");
+  const historyPrevBtn = document.getElementById("history-prev");
+  const historyNextBtn = document.getElementById("history-next");
+  const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  let viewedDateStr = todayStr();
+
+  // Entries for any browsable day: today's live (in-memory) history, or an
+  // archived past day. Archive lookups that miss just render empty.
+  function getEntriesForDate(dateStr) {
+    if (dateStr === history.date) return history.entries;
+    return historyArchive[dateStr] || [];
+  }
+  const emojiEditBtn = document.getElementById("emoji-edit-btn");
+  const emojiCustomize = document.getElementById("emoji-customize");
+  const myEmojisBox = document.getElementById("my-emojis-box");
+  const myEmojisEl = document.getElementById("my-emojis");
+  const availableEmojisEl = document.getElementById("available-emojis");
+  const customizeScrollBody = document.getElementById("customize-scroll-body");
+  const emojiDragGhost = document.getElementById("emoji-drag-ghost");
+
+  const CUSTOM_EMOJIS_KEY = "todo-custom-emojis-v3";
+  const EXCHANGE_EMOJIS_KEY = "todo-exchange-emojis-v3";
+
+  let myEmojis = loadCustomEmojis();
+  let availableEmojis = loadAvailableEmojis();
+
+  function loadCustomEmojis() {
+    const defaults = EMOJI_PICKER.slice(0, 48);
+    try {
+      const saved = localStorage.getItem(CUSTOM_EMOJIS_KEY);
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (Array.isArray(parsed) && parsed.every(v => typeof v === "string")) {
+        return parsed.slice(0, 48);
+      }
+    } catch (e) {}
+    return defaults;
+  }
+
+  function loadAvailableEmojis() {
+    try {
+      const saved = localStorage.getItem(EXCHANGE_EMOJIS_KEY);
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (Array.isArray(parsed) && parsed.every(v => typeof v === "string")) {
+        return parsed;
+      }
+    } catch (e) {}
+    return [...DEFAULT_ADDITIONAL];
+  }
+
+  function saveCustomEmojis() { 
+    renderEmojiPanel();
+    try { localStorage.setItem(CUSTOM_EMOJIS_KEY, JSON.stringify(myEmojis)); } catch (e) {}
+  }
+
+  function saveAvailableEmojis() {
+    try { localStorage.setItem(EXCHANGE_EMOJIS_KEY, JSON.stringify(availableEmojis)); } catch (e) {}
+  }
+
+  function closeEmojiCustomize() {
+    emojiCustomize.classList.remove("show");
+    emojiCustomize.setAttribute("aria-hidden", "true");
+    cleanupActiveDrag();
+  }
+
+  function attachMyEmojiReorderDrag(btn, emoji, sourceIndex) {
+    let startX = 0, startY = 0, activePointerId = null, gestureActive = false;
+    let myDragTimer = null;
+    let isMyDragging = false;
+    let liveTargetIndex = sourceIndex;
+
+    btn.addEventListener("pointerdown", (e) => {
+      if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
+      startX = e.clientX;
+      startY = e.clientY;
+      activePointerId = e.pointerId;
+      gestureActive = true;
+      liveTargetIndex = sourceIndex;
+
+      myDragTimer = setTimeout(() => {
+        if (!gestureActive) return;
+        isDraggingEmoji = true;
+        isMyDragging = true;
+
+        btn.classList.add("drag-source");
+        try { btn.setPointerCapture(activePointerId); } catch (err) {}
+
+        emojiDragGhost.textContent = emoji;
+        emojiDragGhost.style.left = e.clientX + "px";
+        emojiDragGhost.style.top = e.clientY + "px";
+        emojiDragGhost.classList.add("active");
+
+        if (navigator.vibrate) {
+          try { navigator.vibrate(45); } catch (err) {}
+        }
+      }, 320);
+    });
+
+    btn.addEventListener("pointermove", (e) => {
+      if (!gestureActive || activePointerId !== e.pointerId) return;
+      if (!isMyDragging) {
+        const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+        if (dist > 10) {
+          clearTimeout(myDragTimer);
+          myDragTimer = null;
+          gestureActive = false;
+        }
+        return;
+      }
+      e.preventDefault();
+      emojiDragGhost.style.left = e.clientX + "px";
+      emojiDragGhost.style.top = e.clientY + "px";
+
+      const elements = document.elementsFromPoint(e.clientX, e.clientY);
+      const targetBtn = elements.find(el => el && el.classList && el.classList.contains("my-emoji-btn"));
+      if (targetBtn) {
+        const targetIndex = parseInt(targetBtn.dataset.boxIndex, 10);
+        if (!isNaN(targetIndex) && targetIndex !== liveTargetIndex) {
+          liveTargetIndex = targetIndex;
+          const [moved] = myEmojis.splice(sourceIndex, 1);
+          myEmojis.splice(targetIndex, 0, moved);
+          sourceIndex = targetIndex;
+          
+          const buttons = myEmojisEl.children;
+          for (let i = 0; i < myEmojis.length; i++) {
+            if (buttons[i]) {
+              buttons[i].textContent = myEmojis[i];
+              buttons[i].dataset.boxIndex = String(i);
+              buttons[i].classList.remove("drag-source", "drop-target");
+            }
+          }
+          btn.classList.add("drag-source");
+          if (navigator.vibrate) {
+            try { navigator.vibrate(20); } catch (err) {}
+          }
+        }
+      }
+    });
+
+    function onMyDragEnd(e) {
+      if (!gestureActive || activePointerId !== e.pointerId) return;
+      gestureActive = false;
+      clearTimeout(myDragTimer);
+      myDragTimer = null;
+
+      if (isMyDragging) {
+        e.preventDefault();
+        saveCustomEmojis();
+        if (navigator.vibrate) {
+          try { navigator.vibrate([30, 40, 30]); } catch (err) {}
+        }
+      }
+      isMyDragging = false;
+      isDraggingEmoji = false;
+      emojiDragGhost.classList.remove("active");
+      Array.from(myEmojisEl.children).forEach(b => b.classList.remove("drag-source", "drop-target"));
+      renderCustomEmojis();
+      try { btn.releasePointerCapture(activePointerId); } catch (err) {}
+    }
+
+    btn.addEventListener("pointerup", onMyDragEnd);
+    btn.addEventListener("pointercancel", () => {
+      clearTimeout(myDragTimer); myDragTimer = null; gestureActive = false;
+      if (isMyDragging) {
+        isMyDragging = false;
+        isDraggingEmoji = false;
+        emojiDragGhost.classList.remove("active");
+        btn.classList.remove("drag-source");
+        renderCustomEmojis();
+      }
+    });
+  }
+
+  function renderCustomEmojis() {
+    myEmojisEl.innerHTML = "";
+    myEmojis.forEach((emoji, index) => {
+      const btn = document.createElement("button");
+      btn.className = "my-emoji-btn";
+      btn.textContent = emoji;
+      btn.setAttribute("type", "button");
+      btn.dataset.boxIndex = String(index);
+      attachMyEmojiReorderDrag(btn, emoji, index);
+      myEmojisEl.appendChild(btn);
+    });
+  }
+
+  let dragTimer = null;
+  let isDraggingEmoji = false;
+  let draggedEmojiChar = null;
+  let draggedSourceIndex = null;
+  let currentHoveredTargetBtn = null;
+  let dragSourceBtn = null;
+  let activeCapturedPointerId = null;
+  let activeCapturedBtn = null;
+
+  function cleanupActiveDrag() {
+    if (dragTimer) { clearTimeout(dragTimer); dragTimer = null; }
+    
+    if (activeCapturedBtn && activeCapturedPointerId !== null) {
+      try { activeCapturedBtn.releasePointerCapture(activeCapturedPointerId); } catch (e) {}
+    }
+    activeCapturedBtn = null;
+    activeCapturedPointerId = null;
+
+    isDraggingEmoji = false;
+    draggedEmojiChar = null;
+    draggedSourceIndex = null;
+    emojiDragGhost.classList.remove("active");
+    myEmojisBox.classList.remove("drag-hover");
+    
+    customizeScrollBody.classList.remove("scroll-locked");
+
+    if (currentHoveredTargetBtn) {
+      currentHoveredTargetBtn.classList.remove("drop-target");
+      currentHoveredTargetBtn = null;
+    }
+    if (dragSourceBtn) {
+      dragSourceBtn.classList.remove("drag-source");
+      dragSourceBtn = null;
+    }
+  }
+
+  customizeScrollBody.addEventListener("scroll", () => {
+    if (!isDraggingEmoji && dragTimer) {
+      clearTimeout(dragTimer);
+      dragTimer = null;
+    }
+  }, { passive: true });
+
+  function updateHoverTarget(x, y) {
+    const elements = document.elementsFromPoint(x, y);
+    const targetBtn = elements.find(el => el && el.classList && el.classList.contains("my-emoji-btn"));
+    const isOverBox = elements.some(el => el === myEmojisBox);
+
+    if (isOverBox) {
+      myEmojisBox.classList.add("drag-hover");
+    } else {
+      myEmojisBox.classList.remove("drag-hover");
+    }
+
+    if (targetBtn !== currentHoveredTargetBtn) {
+      if (currentHoveredTargetBtn) {
+        currentHoveredTargetBtn.classList.remove("drop-target");
+      }
+      currentHoveredTargetBtn = targetBtn || null;
+      if (currentHoveredTargetBtn) {
+        currentHoveredTargetBtn.classList.add("drop-target");
+      }
+    }
+  }
+
+  function attachExchangeDrag(btn, emoji, sourceIndex) {
+    let startX = 0, startY = 0, activePointerId = null, gestureActive = false;
+
+    btn.addEventListener("pointerdown", (e) => {
+      if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
+      
+      cleanupActiveDrag();
+      startX = e.clientX;
+      startY = e.clientY;
+      activePointerId = e.pointerId;
+      dragSourceBtn = btn;
+      gestureActive = true;
+
+      dragTimer = setTimeout(() => {
+        if (!gestureActive) return;
+        isDraggingEmoji = true;
+        draggedEmojiChar = emoji;
+        draggedSourceIndex = sourceIndex;
+
+        customizeScrollBody.classList.add("scroll-locked");
+
+        btn.classList.add("drag-source");
+        activeCapturedBtn = btn;
+        activeCapturedPointerId = activePointerId;
+        try { btn.setPointerCapture(activePointerId); } catch (err) {}
+
+        emojiDragGhost.textContent = emoji;
+        emojiDragGhost.style.left = e.clientX + "px";
+        emojiDragGhost.style.top = e.clientY + "px";
+        emojiDragGhost.classList.add("active");
+
+        if (navigator.vibrate) {
+          try { navigator.vibrate(45); } catch (err) {}
+        }
+
+        updateHoverTarget(e.clientX, e.clientY);
+      }, 320);
+    });
+
+    btn.addEventListener("pointermove", (e) => {
+      if (!gestureActive || activePointerId !== e.pointerId) return;
+
+      if (!isDraggingEmoji) {
+        const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+        if (dist > 10) {
+          clearTimeout(dragTimer);
+          dragTimer = null;
+          gestureActive = false;
+        }
+        return;
+      }
+
+      e.preventDefault();
+      emojiDragGhost.style.left = e.clientX + "px";
+      emojiDragGhost.style.top = e.clientY + "px";
+      updateHoverTarget(e.clientX, e.clientY);
+    });
+
+    function onDragEnd(e) {
+      if (!gestureActive || activePointerId !== e.pointerId) return;
+      gestureActive = false;
+      clearTimeout(dragTimer);
+      dragTimer = null;
+
+      if (isDraggingEmoji) {
+        e.preventDefault();
+
+        if (currentHoveredTargetBtn && draggedEmojiChar !== null && draggedSourceIndex !== null) {
+          const targetIndex = parseInt(currentHoveredTargetBtn.dataset.boxIndex, 10);
+          if (!isNaN(targetIndex) && targetIndex >= 0 && targetIndex < myEmojis.length) {
+            const boxOldEmoji = myEmojis[targetIndex];
+
+            myEmojis[targetIndex] = draggedEmojiChar;
+            availableEmojis[draggedSourceIndex] = boxOldEmoji;
+
+            saveCustomEmojis();
+            saveAvailableEmojis();
+
+            renderCustomEmojis();
+            renderAvailableEmojis();
+            
+            const newTargetEl = myEmojisEl.children[targetIndex];
+            if (newTargetEl) {
+              newTargetEl.classList.add("replace-flash");
+            }
+            const newSourceEl = availableEmojisEl.children[draggedSourceIndex];
+            if (newSourceEl) {
+              newSourceEl.classList.add("replace-flash");
+            }
+
+            if (navigator.vibrate) {
+              try { navigator.vibrate([30, 40, 30]); } catch (err) {}
+            }
+          }
+        }
+      }
+
+      cleanupActiveDrag();
+    }
+
+    btn.addEventListener("pointerup", onDragEnd);
+    btn.addEventListener("pointercancel", () => {
+      gestureActive = false;
+      cleanupActiveDrag();
+    });
+  }
+
+  window.addEventListener("touchmove", (e) => {
+    if (isDraggingEmoji) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  function renderAvailableEmojis() {
+    availableEmojisEl.innerHTML = "";
+    availableEmojis.forEach((emoji, index) => {
+      const btn = document.createElement("button");
+      btn.className = "available-emoji-btn";
+      btn.textContent = emoji;
+      btn.setAttribute("type", "button");
+      attachExchangeDrag(btn, emoji, index);
+      availableEmojisEl.appendChild(btn);
+    });
+  }
+
+  emojiEditBtn.addEventListener('click', () => {
+    if (emojiCustomize.classList.contains('show')) {
+      closeEmojiCustomize();
+    } else {
+      openEmojiCustomize();
+    }
+  });
+
+  let custCloseStartX = 0, custCloseStartY = 0, custCloseStartTime = 0, custCloseTracking = false;
+  emojiCustomize.addEventListener("pointerdown", (e) => {
+    if (isDraggingEmoji) return;
+    custCloseStartX = e.clientX; custCloseStartY = e.clientY; custCloseStartTime = Date.now(); custCloseTracking = true;
+  });
+  emojiCustomize.addEventListener("pointerup", (e) => {
+    if (!custCloseTracking || isDraggingEmoji) {
+      custCloseTracking = false;
+      return;
+    }
+    custCloseTracking = false;
+    const dist = Math.hypot(e.clientX - custCloseStartX, e.clientY - custCloseStartY);
+    const held = Date.now() - custCloseStartTime;
+    if (dist < 12 && held < 420) {
+      closeEmojiCustomize();
+    }
+  });
+  emojiCustomize.addEventListener("pointercancel", () => { custCloseTracking = false; });
+
+  function openEmojiCustomize() {
+    inputEl.blur();
+    emojiPanel.classList.remove("show");
+    if (instructionsOverlay.classList.contains("show") && !instructionsFirstTime) closeInstructions();
+    renderCustomEmojis();
+    renderAvailableEmojis();
+    emojiCustomize.classList.add("show");
+    emojiCustomize.setAttribute("aria-hidden", "false");
+  }
+
+  historyBtn.addEventListener('click', () => openHistory());
+  let closeStartX = 0, closeStartY = 0, closeStartTime = 0, closeTracking = false;
+  historyOverlay.addEventListener("pointerdown", (e) => {
+    // The arrows are the only interactive element inside the panel that
+    // should NOT count toward a dismiss tap - everything else (panel
+    // background, list, title) still closes on tap as before.
+    if (e.target.closest && e.target.closest(".history-arrow")) {
+      closeTracking = false;
+      return;
+    }
+    closeStartX = e.clientX; closeStartY = e.clientY; closeStartTime = Date.now(); closeTracking = true;
+  });
+  historyOverlay.addEventListener("pointerup", (e) => {
+    if (!closeTracking) return;
+    closeTracking = false;
+    const dist = Math.hypot(e.clientX - closeStartX, e.clientY - closeStartY);
+    const held = Date.now() - closeStartTime;
+    if (dist < 12 && held < 420) closeHistory();
+  });
+  historyOverlay.addEventListener("pointercancel", () => { closeTracking = false; });
+
+  function openHistory() {
+    inputEl.blur();
+    emojiPanel.classList.remove("show");
+    if (instructionsOverlay.classList.contains("show") && !instructionsFirstTime) closeInstructions();
+    ensureHistoryFresh();
+    viewedDateStr = todayStr(); // always open on today; arrows page from there
+    renderHistory();
+    historyOverlay.classList.add("show");
+    historyPanelOpen = true;
+  }
+
+  function closeHistory() {
+    historyOverlay.classList.remove("show");
+    historyPanelOpen = false;
+  }
+
+  // --- Instructions ---
+  const instructionsOverlay = document.getElementById("instructions-overlay");
+  const instructionsListEl = document.getElementById("instructions-list");
+  const instructionsCheckbox = document.getElementById("instructions-checkbox");
+  const instructionsUnderstoodBtn = document.getElementById("instructions-understood-btn");
+  const instructionsConfirmRow = document.getElementById("instructions-confirm-row");
+  const appTitleEl = document.getElementById("app-title");
+
+  // Short date (e.g. "13 Oct") next to the "Today" title; refreshed when the app comes back to the foreground.
+  const titleDateEl = document.getElementById("title-date");
+  function updateTitleDate() {
+    try { titleDateEl.innerHTML = ", " + new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) + "<span id=\"title-time\">, " + new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) + "</span>"; } catch (e) {}
+  }
+  updateTitleDate();
+  setInterval(updateTitleDate, 15000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) updateTitleDate(); });
+
+  // History / Customize / Instruction panels start exactly 14px below the "Today" title and end 8px above the chat box.
+  // Header icons: centred on the middle of the whole word as drawn (top of the tallest letter to the bottom of the "y"),
+  // real font, so the icons sit on the same horizontal centre line as the title on any phone.
+  let headerCtx = null;
+  function alignHeaderIcons() {
+    try {
+      const r = appTitleEl.getBoundingClientRect();
+      if (!(r.height > 0)) return;
+      if (!headerCtx) headerCtx = document.createElement("canvas").getContext("2d");
+      const cs = getComputedStyle(appTitleEl);
+      headerCtx.font = cs.fontStyle + " " + cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+      const m = headerCtx.measureText(appTitleEl.textContent || "Today");
+      if (!(m.fontBoundingBoxAscent > 0)) return;
+      const baseline = r.top + (r.height - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
+      const capCentre = baseline - (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
+      document.querySelectorAll("header .hbtn").forEach((b) => {
+        b.style.top = "0px";
+        const br = b.getBoundingClientRect();
+        b.style.top = (Math.round((capCentre + 2 - (br.top + br.bottom) / 2) * 2) / 2) + "px";
+      });
+    } catch (e) {}
+  }
+  // "Today": the top of its letters sits exactly 14px below the top of the screen area (the text box has some empty
+  // space above the letters, so the header's top margin is reduced by that amount, measured from the real font).
+  let lastTitleMargin = null;
+  function fixTitleTop() {
+    try {
+      const hdr = appTitleEl.parentElement;
+      const appEl = document.getElementById("app");
+      hdr.style.marginTop = "14px";
+      const r = appTitleEl.getBoundingClientRect();
+      if (!(r.height > 0)) return;
+      if (!headerCtx) headerCtx = document.createElement("canvas").getContext("2d");
+      const cs = getComputedStyle(appTitleEl);
+      headerCtx.font = cs.fontStyle + " " + cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+      const m = headerCtx.measureText(appTitleEl.textContent || "Today");
+      if (!(m.fontBoundingBoxAscent > 0)) return;
+      const baseline = r.top + (r.height - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
+      const inkTop = baseline - m.actualBoundingBoxAscent;
+      const want = appEl.getBoundingClientRect().top + (parseFloat(getComputedStyle(appEl).paddingTop) || 0) + 14;
+      const mt = Math.max(0, 14 - (inkTop - want)) + "px";
+      hdr.style.marginTop = mt;
+      // The header moved, so the list is a different height now: re-fit the task cards so the last visible card ends
+      // exactly 8px above the chat box (the cards absorb the extra space).
+      if (lastTitleMargin !== mt) {
+        lastTitleMargin = mt;
+        if (!isTransient()) { rowFitDone = false; snapListHeight(); }
+      }
+    } catch (e) {}
+  }
+  function placePanels() {
+    fixTitleTop();
+    try {
+      const r = appTitleEl.getBoundingClientRect();
+      // The boxes start exactly 14px below "Today" and end exactly 8px above the chat box (exact, not rounded).
+      if (r.height > 0) document.documentElement.style.setProperty("--panel-top", (r.bottom + 14) + "px");
+      const bar = document.querySelector(".input-bar").getBoundingClientRect();
+      if (bar.height > 0 && !isTransient()) document.documentElement.style.setProperty("--panel-bottom", (window.innerHeight - bar.top + 8) + "px");
+    } catch (e) {}
+    alignHeaderIcons();
+  }
+  placePanels();
+  requestAnimationFrame(placePanels);
+  setTimeout(placePanels, 300);
+  window.addEventListener("resize", placePanels);
+  try { document.fonts.ready.then(placePanels); } catch (e) {}
+  window.addEventListener("orientationchange", () => setTimeout(placePanels, 400));
+
+  const ONBOARD_KEY = "todo-onboarding-seen-v1";
+  try {
+    if (new URLSearchParams(location.search).get("reset") === "1") {
+      localStorage.removeItem(ONBOARD_KEY);
+    }
+  } catch (e) {}
+  function loadOnboardingSeen() {
+    try { return localStorage.getItem(ONBOARD_KEY) === "1"; } catch (e) { return false; }
+  }
+  function saveOnboardingSeen() {
+    try { localStorage.setItem(ONBOARD_KEY, "1"); } catch (e) {}
+  }
+  let onboardingSeen = true; // first-launch instruction screen removed; the info icon still opens it on demand
+  let instructionsFirstTime = false;
+
+  const INSTRUCTIONS_DATA = [
+    {
+      emoji: "✅",
+      heading: "Completing a Task",
+      steps: ["Swipe a task to the right to mark it done", "It leaves today's list and gets logged in your History as ticked"],
+      note: "A tick only ever happens when you swipe it yourself - there's no automatic way for a task to get ticked."
+    },
+    {
+      emoji: "❌",
+      heading: "Skipping a Task",
+      steps: ["Swipe a task to the left to mark it crossed", "It leaves today's list and gets logged in your History as crossed"],
+      note: "If a task isn't resolved by midnight, it gets automatically crossed for you too. It'll look identical to one you crossed on purpose - there's currently no way to tell the two apart."
+    },
+    {
+      emoji: "🗑️",
+      heading: "Deleting a Task",
+      steps: ["Tap a task twice quickly, like a double-click, to delete it"],
+      note: "A deleted task won't show up in your visible History, but if it was looping, its deletion still matters - it reappears after every ticked or crossed task, but before any task with no history at all that day."
+    },
+    {
+      emoji: "↩️",
+      heading: "Undoing a Mistake",
+      steps: ["Tap Undo right after a tick, cross, or delete"],
+      note: "Only your single most recent action can be undone - not further back."
+    },
+    {
+      emoji: "➕",
+      heading: "Adding a Task with an Icon",
+      steps: ["Tap the emoji button next to the input box and pick an emoji", "Type your task into the input box", "Tap the add button to add it to your list"],
+      note: "Once a task is added, its icon is locked in - there's currently no way to change it afterward. Pick carefully before adding."
+    },
+    {
+      emoji: "↕️",
+      heading: "Reordering Your List",
+      steps: ["Press and hold a task", "Once it lifts, drag it up or down", "Release to drop it into its new position"],
+      note: "This only reorders today's list - it has no effect on history or on how loops reorder later."
+    },
+    {
+      emoji: "🕘",
+      heading: "Viewing Your History",
+      steps: ["Tap the clock button at the top, the right-most of the three buttons, to open History", "See everything you've ticked or crossed, day by day", "Use the arrows to move one day at a time, backward or forward"],
+      note: "You can only look back 6 days. Anything older has already been used to decide how your looped tasks reappear, and is no longer stored."
+    },
+    {
+      emoji: "😀",
+      heading: "Customizing Your Emoji Set",
+      steps: ["Tap the smiley-with-plus button at the top, the middle one of the three buttons, to open your full emoji library", "Press and hold an emoji, then drag it up into the Emojis Box to add it there", "Press and hold an emoji already inside the Emojis Box, then drag it sideways to reorder it"],
+      note: "The Emojis Box is your quick-access set - it's what you'll actually pick from day to day."
+    },
+    {
+      emoji: "🔔",
+      heading: "Setting a Notification",
+      steps: ["Press and hold a task without moving your finger, then tap \uD83D\uDD14 Notify - HH, MM and SS appear", "Tap HH, MM or SS - all three change to 00", "Press and hold a number, then slide sideways: left counts up, right counts down. Lift your finger and the number turns red - it's set", "Tap away anywhere else to close the picker and save your notification", "To remove it: slide a number back to 00, quick-swipe right on it, then tap away"],
+      note: "The time uses a 24-hour clock, so 18:30 means 6:30 PM. Watch the task itself - a small bell appears next to it once a notification is saved. A looping task repeats its notification on every looped day, unless you tick, cross or delete it before the time. On Android you'll be asked to allow notifications the first time."
+    },
+    {
+      emoji: "🔁",
+      heading: "Making a Task Recur (or Stop Recurring)",
+      steps: ["Press and hold a task without moving your finger, then tap \uD83D\uDD01 Recur - a row of day letters opens", "Tap a letter to turn that day on; tap again to turn it off", "Tap away anywhere else to close the picker and save your choice", "To stop it repeating: hold the task again, turn off every highlighted letter, then tap away"],
+      note: "Watch the task itself, not the picker - a small loop mark appears next to it once a repeat is saved, and disappears once every day is off. When a looping task reappears, its order depends on what happened to it last time: tasks that were ticked or crossed come first, a task that was deleted comes after those, and a task with no record at all that day comes last."
+    }
+  ];
+
+  function renderInstructionsList() {
+    instructionsListEl.innerHTML = "";
+    INSTRUCTIONS_DATA.forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "instruction-card";
+
+      const heading = document.createElement("div");
+      heading.className = "instruction-card-heading";
+      heading.textContent = item.emoji + " " + item.heading;
+      card.appendChild(heading);
+
+      const steps = document.createElement("ul");
+      steps.className = "instruction-card-steps";
+      item.steps.forEach((s) => {
+        const li = document.createElement("li");
+        li.textContent = s;
+        steps.appendChild(li);
+      });
+      card.appendChild(steps);
+
+      const note = document.createElement("div");
+      note.className = "instruction-card-note";
+      note.textContent = "Note: " + item.note;
+      card.appendChild(note);
+
+      instructionsListEl.appendChild(card);
+    });
+  }
+
+  function openInstructions(firstTime) {
+    instructionsFirstTime = firstTime;
+    inputEl.blur();
+    emojiPanel.classList.remove("show");
+    if (historyPanelOpen) closeHistory();
+    if (emojiCustomize.classList.contains("show")) closeEmojiCustomize();
+    renderInstructionsList();
+    instructionsConfirmRow.style.display = firstTime ? "flex" : "none";
+    instructionsUnderstoodBtn.style.display = firstTime ? "block" : "none";
+    if (firstTime) {
+      instructionsCheckbox.checked = false;
+      instructionsUnderstoodBtn.disabled = true;
+    }
+    instructionsOverlay.classList.add("show");
+  }
+
+  function closeInstructions() {
+    instructionsOverlay.classList.remove("show");
+  }
+
+  instructionsCheckbox.addEventListener("change", () => {
+    instructionsUnderstoodBtn.disabled = !instructionsCheckbox.checked;
+  });
+
+  instructionsUnderstoodBtn.addEventListener("click", () => {
+    if (instructionsUnderstoodBtn.disabled) return;
+    onboardingSeen = true;
+    saveOnboardingSeen();
+    closeInstructions();
+  });
+
+  document.getElementById("instructions-btn").addEventListener("click", () => {
+    if (!onboardingSeen) return; // the forced first-time overlay is already up
+    openInstructions(false);
+  });
+
+  // Tap-anywhere-to-close only applies once onboarding is done (reopened
+  // mode), matching History/Customize. The very first forced showing has no
+  // dismiss gesture at all - only tapping Understood (after ticking the
+  // checkbox) can close it.
+  let instrCloseStartX = 0, instrCloseStartY = 0, instrCloseStartTime = 0, instrCloseTracking = false;
+  instructionsOverlay.addEventListener("pointerdown", (e) => {
+    if (instructionsFirstTime) { instrCloseTracking = false; return; }
+    instrCloseStartX = e.clientX; instrCloseStartY = e.clientY; instrCloseStartTime = Date.now(); instrCloseTracking = true;
+  });
+  instructionsOverlay.addEventListener("pointerup", (e) => {
+    if (!instrCloseTracking || instructionsFirstTime) { instrCloseTracking = false; return; }
+    instrCloseTracking = false;
+    const dist = Math.hypot(e.clientX - instrCloseStartX, e.clientY - instrCloseStartY);
+    const held = Date.now() - instrCloseStartTime;
+    if (dist < 12 && held < 420) closeInstructions();
+  });
+  instructionsOverlay.addEventListener("pointercancel", () => { instrCloseTracking = false; });
+
+
+  function updateHistoryNav() {
+    const weekdayIdx = weekdayForDateStr(viewedDateStr);
+    historyTitleEl.textContent = WEEKDAY_NAMES[weekdayIdx];
+    historyNextBtn.disabled = viewedDateStr >= todayStr();
+    historyPrevBtn.disabled = viewedDateStr <= historyFloorDate();
+  }
+
+  function renderHistory() {
+    updateHistoryNav();
+    historyListEl.innerHTML = "";
+    const visibleEntries = getEntriesForDate(viewedDateStr).filter((e) => !e.silent);
+    if (visibleEntries.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "history-empty";
+      empty.textContent = "Nothing here yet.";
+      historyListEl.appendChild(empty);
+      return;
+    }
+    visibleEntries.forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = "history-row";
+      const body = document.createElement("div");
+      body.className = "history-body";
+      // Time of the tick/cross. Older entries have no ts field, but their id ends with Date.now().
+      const idMatch = /-(\d{13})$/.exec(String(entry.id));
+      const ts = entry.ts || (idMatch ? Number(idMatch[1]) : null);
+      {
+        // No saved time = the task was crossed automatically at midnight: show --:-- instead.
+        const time = document.createElement("div");
+        time.className = "history-time";
+        time.textContent = ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--";
+        body.appendChild(time);
+      }
+      const text = document.createElement("div");
+      text.className = "history-text";
+      text.textContent = (entry.icon ? entry.icon + " " : "") + entry.text;
+      body.appendChild(text);
+      const badge = document.createElement("div");
+      badge.className = "history-icon " + entry.action;
+      badge.textContent = entry.action === "tick" ? "✓" : "✕";
+      row.appendChild(badge);   // tick / cross on the left
+      row.appendChild(body);    // text on the right
+      historyListEl.appendChild(row);
+    });
+  }
+
+  historyPrevBtn.addEventListener("click", () => {
+    if (viewedDateStr <= historyFloorDate()) return;
+    viewedDateStr = addDaysToDateStr(viewedDateStr, -1);
+    renderHistory();
+  });
+  historyNextBtn.addEventListener("click", () => {
+    if (viewedDateStr >= todayStr()) return;
+    viewedDateStr = addDaysToDateStr(viewedDateStr, 1);
+    renderHistory();
+  });
+
+  let pendingIcon = null;
+
+  function setToggleIcon(icon) {
+    pendingIcon = icon;
+    if (icon) {
+      emojiToggle.innerHTML = `<span style="font-size:18px;">${icon}</span>`;
+    } else {
+      emojiToggle.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0A0A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="0.7" fill="#A0A0A0" stroke="none"/><circle cx="15" cy="10" r="0.7" fill="#A0A0A0" stroke="none"/><path d="M8.5 14.5c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8"/></svg>`;
+    }
+  }
+
+  function addTapHandler(el, onTap) {
+    let startX = 0, startY = 0, tracking = false;
+    el.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      startX = e.clientX; startY = e.clientY; tracking = true;
+    });
+    el.addEventListener("pointerup", (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+      if (dist < 12) onTap(e);
+    });
+    el.addEventListener("pointercancel", () => { tracking = false; });
+  }
+
+  function renderEmojiPanel() {
+    emojiPanel.innerHTML = "";
+    myEmojis.forEach((emoji) => {
+      const btn = document.createElement("button");
+      btn.textContent = emoji;
+      addTapHandler(btn, () => {
+        setToggleIcon(emoji);
+        emojiPanel.classList.remove("show");
+      });
+      emojiPanel.appendChild(btn);
+    });
+  }
+  renderEmojiPanel();
+
+  addTapHandler(emojiToggle, () => {
+    emojiPanel.classList.toggle("show");
+  });
+
+  function render() {
+    if (openPickerTaskId !== null) closeOpenPicker();
+    listEl.innerHTML = "";
+    tasks.forEach((task, index) => {
+      listEl.appendChild(renderRow(task, index));
+    });
+  }
+
+  function renderRow(task, index) {
+    const wrap = document.createElement("div");
+    wrap.className = "row-wrap";
+    wrap.dataset.taskId = task.id;
+
+    const row = document.createElement("div");
+    row.className = "row";
+
+    if (task.icon) {
+      const emojiSlot = document.createElement("div");
+      emojiSlot.className = "emoji-slot";
+      emojiSlot.textContent = task.icon;
+      row.appendChild(emojiSlot);
+    }
+
+    const textEl = document.createElement("div");
+    textEl.className = "task-text";
+    textEl.textContent = task.text;
+    row.appendChild(textEl);
+
+    if (hasActiveLoop(task)) {
+      row.classList.add("has-loop");
+      const badge = document.createElement("div");
+      badge.className = "loop-badge";
+      badge.innerHTML = LOOP_ICON_SVG;
+      row.appendChild(badge);
+    }
+
+    wrap.appendChild(row);
+    updateBellBadge(wrap, task);
+
+    attachGestures(row, wrap, task, index);
+    return wrap;
+  }
+
+  function updateLoopBadge(wrapEl, task) {
+    const rowEl = wrapEl.querySelector(".row");
+    if (!rowEl) return;
+    let badge = rowEl.querySelector(".loop-badge");
+    const active = hasActiveLoop(task);
+    rowEl.classList.toggle("has-loop", active);
+    if (active && !badge) {
+      badge = document.createElement("div");
+      badge.className = "loop-badge";
+      badge.innerHTML = LOOP_ICON_SVG;
+      rowEl.appendChild(badge);
+    } else if (!active && badge) {
+      badge.remove();
+    }
+    refreshComboBadge(rowEl);
+  }
+
+  function buildDayPicker(task, kind) {
+    const picker = document.createElement("div");
+    picker.className = "day-picker-row";
+    (kind === "time" ? showTime : showDays)(picker, task);
+    return picker;
+  }
+
+  // Hold a task: its own card turns into two choices (no gap yet). The gap opens only after a choice.
+  let chooserEl = null;
+  function clearChooser() {
+    if (!chooserEl) return;
+    const row = chooserEl.parentNode;
+    if (row) row.classList.remove("row--choose");
+    chooserEl.remove(); chooserEl = null;
+  }
+  function openChooser(task, wrap) {
+    if (openPickerTaskId !== null) closeOpenPicker();
+    const row = wrap.querySelector(".row"); if (!row) return;
+    openPickerTaskId = task.id; openPickerEl = null;
+    const box = document.createElement("div"); box.className = "choose"; chooserEl = box;
+    [[BELL_SVG.replace(/width="11" height="11"/, 'width="24" height="24"').replace(/currentColor/g, "#E5484D").replace('stroke-width="2"', 'stroke-width="2.3"'), "Notify", "time"],
+     [LOOP_ICON_SVG.replace(/width="13" height="13"/, 'width="16" height="16"'), "Recur", "days"]].forEach(([svg, label, kind]) => {
+      const btn = document.createElement("button");
+      btn.setAttribute("type", "button"); btn.innerHTML = "<span>" + label + "</span>" + svg;
+      addTapHandler(btn, () => { if (kind === "time") askNotifyPermission(); openPickerFor(task, wrap, kind); });
+      box.appendChild(btn);
+    });
+    // Taps on the choices must not reach the card's own gesture handler (it would treat them
+    // as "tap while a picker is open" and close the panel straight away). Releasing the finger
+    // that started the hold has no matching pointerdown here, so it still passes through.
+    // A tap on empty space around the buttons passes through, so it closes the panel like any card tap.
+    box.addEventListener("pointerdown", (e) => { if (e.target.closest("button")) { e.stopPropagation(); box._d = true; } });
+    ["pointerup", "pointercancel"].forEach((ev) => box.addEventListener(ev, (e) => {
+      if (box._d) { e.stopPropagation(); box._d = false; }
+    }));
+    row.classList.add("row--choose", "row--held"); row.appendChild(box);
+  }
+
+  function showDays(picker, task) {
+    picker.innerHTML = "";
+    const days = task.repeatDays ? task.repeatDays.slice() : [false, false, false, false, false, false, false];
+    DAY_LABELS.forEach((label, i) => {
+      const btn = document.createElement("button");
+      btn.className = "day-btn" + (days[i] ? " active" : "") + (i === new Date().getDay() ? " today" : "");
+      btn.textContent = label;
+      // Small date number (top-left): the next date this weekday falls on, starting from today.
+      const dd = document.createElement("span");
+      dd.className = "dd";
+      const now = new Date();
+      dd.textContent = new Date(now.getFullYear(), now.getMonth(), now.getDate() + ((i - now.getDay() + 7) % 7)).getDate();
+      btn.appendChild(dd);
+      btn.setAttribute("type", "button");
+      addTapHandler(btn, () => {
+        days[i] = !days[i];
+        btn.classList.toggle("active", days[i]);
+      });
+      picker.appendChild(btn);
+    });
+    picker._days = days;
+  }
+
+  // HH : MM : SS.
+  //  - Tap a label (HH / MM / SS): all three become 00.
+  //  - Drag LEFT and hold on a number: it counts forward; drag RIGHT and hold: it counts backward.
+  //    The further the finger is dragged, the faster it counts. It stops at 00 and at the maximum.
+  //    While dragging the field stays plain; when released it turns red. Digits slide as they change.
+  //  - To go back to labels, start a fresh quick right swipe on a number that is already 00.
+  function showTime(picker, task) {
+    picker.innerHTML = ""; picker.classList.add("time-row");
+    const r = task.remindAt, vals = r ? [r.h, r.m, r.s] : [null, null, null];
+    const MAX = [23, 59, 59], LAB = ["HH", "MM", "SS"], els = [], tts = [], dragging = [false, false, false];
+    const DEAD = 10; // px of drag before counting starts
+    // dir: +1 = new text slides in from the right (counting forward), -1 = from the left (backward)
+    const draw = (dir) => els.forEach((e, i) => {
+      const txt = vals[i] === null ? LAB[i] : pad2(vals[i]);
+      e.classList.toggle("num", vals[i] !== null);
+      e.classList.toggle("set", vals[i] !== null && !dragging[i]);
+      if (tts[i].textContent !== txt) {
+        tts[i].textContent = txt;
+        if (dir && tts[i].animate) tts[i].animate(
+          [{ transform: "translateX(" + (dir * 16) + "px)", opacity: 0 }, { transform: "translateX(0)", opacity: 1 }],
+          { duration: 150, easing: "ease-out" });
+      }
+    });
+    vals.forEach((_, i) => {
+      if (i) { const c = document.createElement("span"); c.style.cssText = "display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:20px;max-width:40px;flex:1 1 0;"; for (let k = 0; k < 2; k++) { const d = document.createElement("i"); d.style.cssText = "display:block;width:2.5px;height:2.5px;border-radius:50%;background:#A0A0A0;"; c.appendChild(d); } picker.appendChild(c); }
+      const el = document.createElement("div"); el.className = "tf";
+      const tt = document.createElement("span"); el.appendChild(tt); tts.push(tt);
+      els.push(el); picker.appendChild(el);
+      let sx = 0, cx = 0, st = 0, v0 = null, down = false, timer = null;
+      const stop = () => { if (timer) { clearTimeout(timer); timer = null; } };
+      const release = () => { if (dragging[i]) { dragging[i] = false; draw(0); } };
+      const tick = () => {
+        if (!down || vals[i] === null) return;
+        const dx = cx - sx, ad = Math.abs(dx);
+        if (ad > DEAD) {
+          if (!dragging[i]) { dragging[i] = true; draw(0); }
+          const dir = dx < 0 ? 1 : -1;
+          const next = Math.max(0, Math.min(MAX[i], vals[i] + dir));
+          if (next !== vals[i]) { vals[i] = next; draw(dir); }
+          timer = setTimeout(tick, Math.max(35, 380 - (ad - DEAD) * 7));
+        } else timer = setTimeout(tick, 50);
+      };
+      el.addEventListener("pointerdown", (e) => {
+        e.preventDefault(); el.setPointerCapture(e.pointerId);
+        down = true; sx = cx = e.clientX; st = performance.now(); v0 = vals[i];
+        stop(); if (v0 !== null) tick();
+      });
+      el.addEventListener("pointermove", (e) => { if (down) cx = e.clientX; });
+      el.addEventListener("pointerup", (e) => {
+        if (!down) return; down = false; stop();
+        const dx = e.clientX - sx, quick = performance.now() - st < 250;
+        release();
+        if (v0 === null) { if (Math.abs(dx) <= 20 || (quick && Math.abs(dx) > 30)) { vals[0] = vals[1] = vals[2] = 0; draw(1); } }
+        else if (v0 === 0 && vals[i] === 0 && dx > 30 && quick) { vals[0] = vals[1] = vals[2] = null; draw(-1); }
+      });
+      el.addEventListener("pointercancel", () => { down = false; stop(); release(); });
+    });
+    draw(0);
+    picker._time = vals;
+  }
+
+  function openPickerFor(task, wrap, kind) {
+    if (!(chooserEl && openPickerTaskId === task.id)) { if (openPickerTaskId !== null) closeOpenPicker(); }
+    clearChooser();
+    // Measure before inserting: the picker + task block must stay fully in
+    // view. Near the bottom, the tasks above are pushed up (list scrolls
+    // down); near the top, the tasks below are pushed down (list scrolls up).
+    const PICK = PICKER_HEIGHT + ROW_GAP;
+    const viewH = listEl.clientHeight - LIST_PAD_BOTTOM;
+    const topRel = wrap.getBoundingClientRect().top - listEl.getBoundingClientRect().top;
+    const blockBottom = topRel + PICK + ROW_HEIGHT;
+    const scrollStart = listEl.scrollTop;
+    const overflowing = listEl.scrollHeight - listEl.clientHeight > 1;
+    const atBottom = overflowing && (listEl.scrollHeight - listEl.clientHeight - scrollStart) <= 1;
+    let dScroll = 0;
+    if (atBottom) dScroll = PICK; // scrolled to the very bottom: every task pushes up
+    else if (topRel < 0) dScroll = topRel;
+    else if (blockBottom > viewH) dScroll = Math.min(blockBottom - viewH, topRel);
+    // Scrolled to the very top (or anywhere else): tasks push down.
+    const finalMax = listEl.scrollHeight + PICK - listEl.clientHeight;
+    const scrollTarget = Math.max(0, Math.min(finalMax, scrollStart + dScroll));
+
+    // Apply the FINAL layout and scroll position in one synchronous step (so
+    // there is never an intermediate, half-scrolled frame), then animate every
+    // task from where it visually was to where it now is using transforms.
+    const picker = buildDayPicker(task, kind);
+    picker.style.opacity = "0";
+    openPickerEl = picker;
+    openPickerTaskId = task.id;
+    flipList(() => {
+      listEl.insertBefore(picker, wrap);
+      // At the very bottom, clamp to the TRUE max scroll (scrollHeight/clientHeight
+      // are rounded, so a computed target can stop a fraction short and drift later).
+      listEl.scrollTop = atBottom ? listEl.scrollHeight : scrollTarget;
+    });
+    picker.style.transition = "opacity 0.11s ease";
+    picker.style.opacity = "1";
+  }
+
+  // FLIP helper: records each task's on-screen position, runs the mutation
+  // (DOM + scroll change), then slides every task from its old position to the
+  // new one with a transform, so tasks glide and never jump.
+  function flipList(mutate) {
+    const wraps = Array.from(listEl.children).filter((w) => w.classList.contains("row-wrap") && w.dataset.resolving !== "1");
+    const first = wraps.map((w) => w.getBoundingClientRect().top);
+    mutate();
+    const moved = [];
+    const flipId = (flipList._n = (flipList._n || 0) + 1);
+    wraps.forEach((w, i) => {
+      const d = first[i] - w.getBoundingClientRect().top;
+      if (Math.abs(d) > 0.5) {
+        w.style.transition = "none";
+        w.style.transform = "translateY(" + d + "px)";
+        w._flipId = flipId;
+        moved.push(w);
+      }
+    });
+    void listEl.offsetHeight;
+    moved.forEach((w) => {
+      w.style.transition = "transform 0.11s ease";
+      w.style.transform = "translateY(0px)";
+    });
+    setTimeout(() => {
+      moved.forEach((w) => {
+        if (w.dataset.resolving === "1" || w._flipId !== flipId) return;
+        w.style.transition = "";
+        w.style.transform = "";
+      });
+    }, 140);
+  }
+
+  function closeOpenPicker() {
+    clearChooser();
+    document.querySelectorAll(".row--held").forEach((r) => r.classList.remove("row--held"));
+    if (openPickerTaskId === null) { openPickerEl = null; return; }
+    const days = openPickerEl ? openPickerEl._days : null;
+    const t = tasks.find((x) => x.id === openPickerTaskId);
+    if (t && days) {
+      const hasLoop = days.some(Boolean);
+      t.repeatDays = hasLoop ? days.slice() : null;
+      if (hasLoop) {
+        if (!t.loopId) t.loopId = "loop" + (uid++);
+        loopTemplates[t.loopId] = { text: t.text, icon: t.icon, repeatDays: t.repeatDays.slice(), remindAt: t.remindAt ? { ...t.remindAt } : null };
+      } else if (t.loopId) {
+        delete loopTemplates[t.loopId];
+        t.loopId = null;
+      }
+      saveLoopTemplates();
+      saveTasks();
+      const rowWrap = listEl.querySelector('.row-wrap[data-task-id="' + t.id + '"]');
+      if (rowWrap) updateLoopBadge(rowWrap, t);
+    }
+    const tv = openPickerEl ? openPickerEl._time : null;
+    const tt = tasks.find((x) => x.id === openPickerTaskId);
+    if (tt && tv) {
+      tt.remindAt = tv[0] === null ? null : { h: tv[0], m: tv[1], s: tv[2] };
+      if (tt.loopId && loopTemplates[tt.loopId]) {   // looping task: the reminder time repeats on every looped day
+        loopTemplates[tt.loopId].remindAt = tt.remindAt ? { ...tt.remindAt } : null;
+      }
+      saveLoopTemplates();
+      saveTasks();
+      const rw = listEl.querySelector('.row-wrap[data-task-id="' + tt.id + '"]');
+      if (rw) updateBellBadge(rw, tt);
+    }
+    const pickerToClose = openPickerEl;
+    openPickerEl = null;
+    openPickerTaskId = null;
+    if (pickerToClose && pickerToClose.parentNode) {
+      void pickerToClose.offsetHeight;
+      pickerToClose.style.transition = "height 0.1s ease, margin-bottom 0.1s ease, opacity 0.1s ease";
+      pickerToClose.style.height = "0px";
+      pickerToClose.style.marginBottom = "-" + ROW_GAP + "px";
+      pickerToClose.style.opacity = "0";
+      setTimeout(() => {
+        if (pickerToClose && pickerToClose.parentNode) pickerToClose.remove();
+      }, 100);
+    }
+  }
+
+  document.addEventListener("pointerdown", (e) => {
+    if (openPickerTaskId === null) return;
+    const t = e.target;
+    if (t && t.closest && (t.closest(".day-picker-row") || t.closest(".row"))) return;
+    closeOpenPicker();
+  }, true);
+
+  function attachGestures(row, wrap, task, index) {
+    let dx = 0, mode = null, decided = false, startX = 0, startY = 0;
+    let longPressTimer = null;
+    let appliedShift = 0, startIndex = index, activePointerId = null;
+    let reorderMoved = false;
+    let revealEl = null;
+    let safetyReleaseTimer = null;
+    let scrollAnchorY = 0;
+    let siblingWraps = [];
+    let baseIndexOf = new Map();
+    let lastClientY = 0, startScroll = 0, autoScrollRaf = null, stepAnim = null, nextStepAt = 0, overEdge = 0;
+    const layoutTop = (w) => (w.offsetParent === listEl ? w.offsetTop : w.offsetTop - listEl.offsetTop);
+    // Exact slot geometry (offsetTop/offsetHeight are rounded to whole pixels, which let the
+    // scroll steps drift a fraction of a pixel and leave the last card slightly off the chat box edge).
+    const slotTop = (w) => {
+      if (openPickerEl === null) { const i = Array.prototype.indexOf.call(listEl.children, w); if (i >= 0) return i * ROW_PITCH; }
+      return layoutTop(w);
+    };
+    const slotH = (w) => (openPickerEl === null ? ROW_HEIGHT : w.offsetHeight);
+    const STEP_MS = 260, STEP_PAUSE = 140;
+    const footerEl = document.querySelector("footer");
+    let footerLineOn = false;
+    let dragMask = null;
+    const EDGE_H = 12;
+    function edgeMask(which) {
+      let m = document.getElementById("edge-mask-" + which);
+      if (!m) { m = document.createElement("div"); m.id = "edge-mask-" + which; m.className = "edge-mask"; (document.getElementById("app") || document.body).appendChild(m); }
+      return m;
+    }
+    function setEdgeMasks(dir) {            // dir: -1 top edge, 1 bottom edge, 0 none
+      const lr = listEl.getBoundingClientRect();
+      const top = edgeMask("top"), bot = edgeMask("bottom");
+      top.style.cssText = `left:${lr.left}px;width:${lr.width}px;top:${lr.top}px;height:${EDGE_H}px;`;
+      bot.style.cssText = `left:${lr.left}px;width:${lr.width}px;top:${lr.bottom - EDGE_H}px;height:${EDGE_H}px;`;
+      top.classList.toggle("on", dir < 0);
+      bot.classList.toggle("on", dir > 0);
+    }
+    function clearDragMasks() {
+      if (dragMask) { dragMask.remove(); dragMask = null; }
+      ["top", "bottom"].forEach((w) => { const m = document.getElementById("edge-mask-" + w); if (m) m.classList.remove("on"); });
+    }
+
+    function updateReorder() {
+      // Finger travel + how far the list has auto-scrolled since the lift.
+      const deltaY = (lastClientY - startY) + (listEl.scrollTop - startScroll);
+      if (Math.abs(deltaY) > 4) reorderMoved = true;
+      const maxShift = tasks.length - 1 - startIndex;
+      const minShift = -startIndex;
+      const clampedDeltaY = Math.max(minShift * ROW_PITCH, Math.min(maxShift * ROW_PITCH, deltaY));
+      // Keep the dragged card inside the list area: it stops at the header's
+      // and chat box's borders and never slides into them.
+      // Sub-pixel exact geometry (offsetTop/offsetHeight round to whole pixels, which left the
+      // dragged card a fraction short of the border now that card heights are fractional).
+      const wrapRect = wrap.getBoundingClientRect();
+      const listRect = listEl.getBoundingClientRect();
+      const nat = wrapRect.top - listRect.top;
+      const minT = 0 - nat;
+      const maxT = listRect.height - LIST_PAD_BOTTOM - wrapRect.height - nat;
+      const visualT = Math.max(minT, Math.min(maxT, clampedDeltaY));
+      overEdge = clampedDeltaY < minT - 1 ? -1 : (clampedDeltaY > maxT + 1 ? 1 : 0);
+      const atBottomEdge = overEdge > 0;
+      if (atBottomEdge !== footerLineOn) { footerLineOn = atBottomEdge; footerEl.classList.toggle("scrolling", atBottomEdge); }
+      row.style.transform = `translateY(${visualT}px)`;
+      if (dragMask) dragMask.style.transform = `translateY(${visualT}px)`;
+      setEdgeMasks(overEdge);
+
+      const rawShift = deltaY / ROW_PITCH;
+      const wholeShift = Math.trunc(rawShift);
+      const pastThreshold = Math.abs(rawShift - wholeShift) >= REORDER_THRESHOLD;
+      const shift = Math.max(minShift, Math.min(maxShift, wholeShift + (pastThreshold ? Math.sign(rawShift) : 0)));
+      if (shift !== appliedShift) {
+        appliedShift = shift;
+        siblingWraps.forEach((w) => {
+          const baseIdx = baseIndexOf.get(w);
+          let offset = 0;
+          if (shift > 0 && baseIdx > startIndex && baseIdx <= startIndex + shift) offset = -ROW_PITCH;
+          else if (shift < 0 && baseIdx < startIndex && baseIdx >= startIndex + shift) offset = ROW_PITCH;
+          w.style.transform = offset ? `translateY(${offset}px)` : "translateY(0px)";
+        });
+      }
+    }
+
+    // While dragging, when the card reaches the header (top) or the chat box
+    // (bottom) the list scrolls by the space the next task takes.
+    function autoScrollTick(now) {
+      autoScrollRaf = null;
+      if (mode !== "reorder" || activePointerId === null) return;
+      if (stepAnim) {
+        const p = Math.min(1, (now - stepAnim.t0) / STEP_MS);
+        const e = 1 - Math.pow(1 - p, 3); // ease-out
+        listEl.scrollTop = stepAnim.from + (stepAnim.to - stepAnim.from) * e;
+        updateReorder();
+        if (p >= 1) { stepAnim = null; nextStepAt = now + STEP_PAUSE; }
+      } else if (now >= nextStepAt) {
+        // Card is pushed against the header's bottom border (top) or the chat box's top border (bottom).
+        const dir = overEdge;
+        if (dir !== 0 && reorderMoved) {
+          // Scroll by exactly the space the next task needs to come fully into view.
+          const max = listEl.scrollHeight - listEl.clientHeight;
+          const from = listEl.scrollTop;
+          const viewH = listEl.clientHeight;
+          const PAD_TOP = 0, PAD_BOTTOM = LIST_PAD_BOTTOM;
+          const others = Array.from(listEl.children).filter(w => w !== wrap);
+          let to = from;
+          if (dir < 0) {
+            let next = null;
+            others.forEach(w => { const t = slotTop(w); if (t < from + PAD_TOP - 0.5 && (!next || t > slotTop(next))) next = w; });
+            to = next ? slotTop(next) - PAD_TOP : 0;
+          } else {
+            let next = null;
+            others.forEach(w => { const b = slotTop(w) + slotH(w); if (b > from + viewH - PAD_BOTTOM + 0.5 && (!next || b < slotTop(next) + slotH(next))) next = w; });
+            to = next ? slotTop(next) + slotH(next) + PAD_BOTTOM - viewH : max;
+          }
+          to = Math.max(0, Math.min(max, to));
+          if (Math.abs(to - from) > 0.5) stepAnim = { from, to, t0: now };
+        }
+      }
+      autoScrollRaf = requestAnimationFrame(autoScrollTick);
+    }
+
+    function clearLP() { if (longPressTimer) clearTimeout(longPressTimer); longPressTimer = null; }
+
+    row.addEventListener("pointerdown", (e) => {
+      if (!e.isPrimary || activeGestureId !== null || wrap.dataset.resolving === "1") return;
+      activeGestureId = task.id;
+      clearTimeout(safetyReleaseTimer);
+      safetyReleaseTimer = setTimeout(() => {
+        if (activeGestureId === task.id) activeGestureId = null;
+      }, 5000);
+      row.setPointerCapture?.(e.pointerId);
+      activePointerId = e.pointerId;
+      startX = e.clientX; startY = e.clientY;
+      decided = false; dx = 0; appliedShift = 0; reorderMoved = false;
+      startIndex = tasks.findIndex(t => t.id === task.id);
+      mode = null;
+      longPressTimer = setTimeout(() => {
+        if (!decided && openPickerTaskId === null) {
+          decided = true; mode = "reorder"; row.style.zIndex = 5; wrap.style.zIndex = 10;
+          wrap.style.overflow = "visible";
+          wrap.style.transform = "translateZ(0)";
+          row.style.transition = "none";
+          const all = Array.from(listEl.children).filter(w => w.classList.contains("row-wrap") && w.dataset.resolving !== "1");
+          baseIndexOf = new Map();
+          all.forEach((w, i) => baseIndexOf.set(w, i));
+          siblingWraps = all.filter(w => w !== wrap);
+          siblingWraps.forEach(w => { w.style.zIndex = 1; });
+          dragMask = document.createElement("div"); dragMask.className = "drag-mask"; wrap.insertBefore(dragMask, row);
+          row.style.willChange = "transform"; siblingWraps.forEach(w => { w.style.willChange = "transform"; });
+          siblingWraps.forEach(w => { w.style.transition = "transform 0.24s cubic-bezier(0.22, 1, 0.36, 1)"; });
+          startScroll = listEl.scrollTop;
+          lastClientY = startY; stepAnim = null; nextStepAt = 0; overEdge = 0;
+          if (autoScrollRaf === null) autoScrollRaf = requestAnimationFrame(autoScrollTick);
+        }
+      }, 320);
+    });
+
+    row.addEventListener("pointermove", (e) => {
+      if (activePointerId === null) return;
+      if (openPickerTaskId === task.id) return; // this row's picker is open - only a tap-to-close applies
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+
+      if (!decided) {
+        if (Math.abs(deltaX) > 16 && Math.abs(deltaX) > Math.abs(deltaY) * 1.8) {
+          decided = true; clearLP(); mode = "swipe";
+        } else if (Math.abs(deltaY) > 36) {
+          decided = true; clearLP(); mode = "scrolling";
+          scrollAnchorY = e.clientY;
+        }
+        return;
+      }
+
+      if (mode === "scrolling") {
+        listEl.scrollTop -= (e.clientY - scrollAnchorY);
+        scrollAnchorY = e.clientY;
+        return;
+      }
+
+      if (mode === "swipe") {
+        dx = deltaX;
+        row.style.transform = `translateX(${dx}px)`;
+        row.style.transition = "none";
+        if (!revealEl) {
+          revealEl = document.createElement("div");
+          wrap.insertBefore(revealEl, row);
+        }
+        revealEl.className = "reveal " + (dx > 0 ? "right" : "left");
+      } else if (mode === "reorder") {
+        lastClientY = e.clientY;
+        updateReorder();
+      }
+    });
+
+    function finish(e) {
+      if (activePointerId === null) return; // stray pointerup (rejected/second finger)
+      if (e && e.pointerId !== undefined && e.pointerId !== activePointerId) return;
+      clearLP();
+      if (autoScrollRaf !== null) { cancelAnimationFrame(autoScrollRaf); autoScrollRaf = null; }
+      stepAnim = null;
+      clearTimeout(safetyReleaseTimer);
+      footerLineOn = false; footerEl.classList.remove("scrolling");
+      clearDragMasks();
+      activePointerId = null;
+      if (activeGestureId === task.id) activeGestureId = null;
+      const wasTap = !decided && mode === null && !!e && e.type === "pointerup" && Math.hypot(e.clientX - startX, e.clientY - startY) < 12;
+      if (mode === "swipe") {
+        const rowWidth = row.offsetWidth || 320;
+        const threshold = rowWidth * 0.3;
+        if (dx > threshold) {
+          triggerActionAnimation(task, wrap, row, "tick", false, "tick");
+          return;
+        } else if (dx < -threshold) {
+          triggerActionAnimation(task, wrap, row, "cross", false, "cross");
+          return;
+        } else {
+          row.style.transition = "transform 0.2s ease";
+          row.style.transform = "translateX(0)";
+          if (revealEl) { revealEl.remove(); revealEl = null; }
+        }
+      }
+      let wasLongPressNoShift = false;
+      if (mode === "reorder") {
+        if (appliedShift !== 0) {
+          const [moved] = tasks.splice(startIndex, 1);
+          tasks.splice(startIndex + appliedShift, 0, moved);
+          saveTasks();
+        } else if (!reorderMoved) {
+          wasLongPressNoShift = true; // hard press and release, no drag - toggle the loop picker
+        }
+        siblingWraps.forEach((w) => { w.style.transition = "none"; w.style.transform = ""; w.style.zIndex = ""; w.style.willChange = ""; });
+        row.style.willChange = "";
+        listEl.insertBefore(wrap, siblingWraps[startIndex + appliedShift] || null);
+        wrap.style.overflow = "";
+        wrap.style.transform = "";
+      }
+      row.style.zIndex = ""; wrap.style.zIndex = "";
+      row.style.transition = "transform 0.2s ease, box-shadow 0.2s ease";
+      row.style.boxShadow = "none";
+      row.style.transform = "none";
+      mode = null; decided = false;
+      if (wasLongPressNoShift) {
+        if (openPickerTaskId === task.id) {
+          closeOpenPicker();
+        } else if (openPickerTaskId !== null) {
+          closeOpenPicker(); // a different task's picker is open - just close it, don't also open this one
+        } else {
+          openChooser(task, wrap);
+        }
+        return;
+      }
+      if (wasTap) {
+        if (openPickerTaskId !== null) {
+          closeOpenPicker(); // a plain tap while any picker is open just closes it
+          return;
+        }
+        const now = Date.now();
+        if (window._lastTapTime && window._lastTapTaskId === task.id && (now - window._lastTapTime < 380)) {
+          window._lastTapTime = null;
+          window._lastTapTaskId = null;
+          if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+          triggerDoubleTapDelete(task, wrap, row);
+        } else {
+          window._lastTapTime = now;
+          window._lastTapTaskId = task.id;
+          if (tapTimer) clearTimeout(tapTimer);
+          tapTimer = setTimeout(() => {
+            window._lastTapTime = null;
+            window._lastTapTaskId = null;
+          }, 380);
+        }
+      }
+    }
+
+    row.addEventListener("contextmenu", (ev) => ev.preventDefault());
+    row.addEventListener("pointerup", finish);
+    row.addEventListener("pointercancel", finish);
+  }
+
+  function triggerActionAnimation(task, wrap, row, action, skipHistory, actionType) {
+    // Mutate data FIRST, synchronously, before any animation delay - so the
+    // removal + history order can never be lost or reordered if the tab
+    // gets backgrounded/suspended mid-animation. Everything after this is
+    // purely cosmetic and never gates the actual data change.
+    const dateBefore = history.date;
+    ensureHistoryFresh();
+    if (history.date !== dateBefore) { render(); return; }
+    if (openPickerTaskId === task.id) closeOpenPicker();
+    const idx = tasks.findIndex(t => t.id === task.id);
+    if (idx === -1) {
+      if (wrap && wrap.parentNode) wrap.remove();
+      return;
+    }
+    const removedTask = tasks[idx];
+    tasks = tasks.filter(t => t.id !== task.id);
+    lastRemoved = { task: removedTask, index: idx };
+    lastHistoryId = addHistoryEntry(removedTask, action || "cross", skipHistory);
+    saveTasks();
+    showUndo();
+
+    wrap.dataset.resolving = "1";
+    row.style.transition = "none";
+    row.style.transform = "translateX(0px)";
+    const rev = wrap.querySelector(".reveal");
+    if (rev) rev.remove();
+
+    const centerIcon = document.createElement("div");
+
+    if (actionType === "tick") {
+      row.classList.add("row--flash-green");
+      centerIcon.className = "center-action-icon";
+      centerIcon.innerHTML = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 5 9 18 3 12"/></svg>`;
+    } else if (actionType === "cross") {
+      row.classList.add("row--flash-red");
+      centerIcon.className = "center-action-icon";
+      centerIcon.innerHTML = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><line x1="5" y1="5" x2="19" y2="19"/></svg>`;
+    } else {
+      row.classList.add("row--flash-white");
+      centerIcon.className = "center-delete-icon";
+      centerIcon.innerHTML = `<svg width="26" height="26" viewBox="1 1 22 22" fill="none" stroke="#B8342A" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+    }
+
+    wrap.appendChild(centerIcon);
+    setTimeout(() => finishResolveAnimation(wrap), 380);
+  }
+
+  function triggerDoubleTapDelete(task, wrap, row) {
+    triggerActionAnimation(task, wrap, row, "cross", true, "delete");
+  }
+
+  function finishResolveAnimation(wrap) {
+    const h = wrap.getBoundingClientRect().height;
+    wrap.style.transformOrigin = "center center";
+    wrap.style.transition = "opacity 0.14s ease, transform 0.14s cubic-bezier(0.4, 0, 1, 1)";
+    wrap.style.opacity = "0";
+    wrap.style.transform = "scaleY(0.4) scaleX(0.9)";
+    setTimeout(() => {
+      if (!wrap || !wrap.parentNode) { render(); return; }
+      // Remove the card in one step and let the rest of the list glide into place (FLIP):
+      // note where each nearby card is now, remove the card, then animate every card from its
+      // old spot to its new one. When the list is scrolled near its end, removing a card makes
+      // the browser pull the cards above DOWN while the cards below move UP; animating both
+      // from their real positions closes the slot with no empty gap and no jump at the end.
+      const lr = listEl.getBoundingClientRect();
+      const near = Array.from(listEl.children).filter(k => {
+        if (k === wrap) return false;
+        const r = k.getBoundingClientRect();
+        return r.bottom > lr.top - 60 && r.top < lr.bottom + 60;
+      });
+      const oldTop = new Map();
+      near.forEach(k => oldTop.set(k, k.getBoundingClientRect().top));
+      wrap.remove();
+      near.forEach(k => {
+        const dy = oldTop.get(k) - k.getBoundingClientRect().top;
+        if (Math.abs(dy) < 0.5) return;
+        k.animate(
+          [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0px)" }],
+          { duration: 200, easing: "ease-out" }
+        );
+      });
+    }, 140);
+  }
+
+  function showUndo() {
+    if (undoTimer) clearTimeout(undoTimer);
+    // Keep the Undo button exactly 20px above the chat box, wherever the chat box currently is.
+    try {
+      const bar = document.querySelector(".input-bar").getBoundingClientRect();
+      const appR = document.getElementById("app").getBoundingClientRect();
+      toastEl.style.bottom = Math.round(appR.bottom - bar.top + 20) + "px";
+    } catch (e) {}
+    toastEl.classList.add("show");
+    undoTimer = setTimeout(() => {
+      toastEl.classList.remove("show");
+      lastRemoved = null;
+      lastHistoryId = null;
+    }, 3000);
+  }
+
+  addTapHandler(undoBtn, () => {
+    if (!lastRemoved) return;
+    tasks.splice(Math.min(lastRemoved.index, tasks.length), 0, lastRemoved.task);
+    if (lastHistoryId) {
+      ensureHistoryFresh();
+      history.entries = history.entries.filter(e => e.id !== lastHistoryId);
+      saveHistory();
+      if (historyPanelOpen) renderHistory();
+      lastHistoryId = null;
+    }
+    if (undoTimer) clearTimeout(undoTimer);
+    toastEl.classList.remove("show");
+    const restoredId = lastRemoved.task.id;
+    lastRemoved = null;
+    saveTasks();
+    render();
+    // If the restored card landed outside the visible part of the list (e.g. the last task
+    // when the list is scrolled to the bottom), jump the list so it is in view. Instant,
+    // with no extra animation, so it appears just like any other restored task.
+    const back = listEl.querySelector('.row-wrap[data-task-id="' + restoredId + '"]');
+    if (back) {
+      const lr = listEl.getBoundingClientRect();
+      const r = back.getBoundingClientRect();
+      if (r.bottom > lr.bottom) listEl.scrollTop += r.bottom - lr.bottom;
+      else if (r.top < lr.top) listEl.scrollTop -= lr.top - r.top;
+    }
+  });
+
+  function addTask() {
+    const val = inputEl.value.trim();
+    if (!val) return;
+    if (openPickerTaskId !== null) closeOpenPicker();
+    inputEl.value = "";
+    tasks.push({ id: "t" + (uid++), text: val, icon: pendingIcon, repeatDays: null });
+    setToggleIcon(null);
+    emojiPanel.classList.remove("show");
+    saveTasks();
+    // Add only the new card; rebuilding the whole list here was a main source of the lag.
+    listEl.appendChild(renderRow(tasks[tasks.length - 1], tasks.length - 1));
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    // The screen holds VISIBLE_ROWS (9) tasks comfortably, so only scroll once the list is longer.
+    if (tasks.length > VISIBLE_ROWS) glideToEnd();
+  }
+
+  // One continuous scroll to the end. The target is re-read every frame, so when the
+  // keyboard closes mid-scroll the glide follows the new size instead of being restarted
+  // (restarting a smooth scroll was the visible stutter). Touching the list cancels it.
+  let glideId = 0;
+  function glideToEnd() {
+    const id = ++glideId;
+    const from = listEl.scrollTop;
+    const t0 = performance.now();
+    const DUR = 280, SETTLE = 500;
+    function step(now) {
+      if (id !== glideId) return;
+      const max = Math.max(0, listEl.scrollHeight - listEl.clientHeight);
+      const t = now - t0;
+      const p = Math.min(1, t / DUR);
+      const e = 1 - Math.pow(1 - p, 3);
+      listEl.scrollTop = from + (max - from) * e;
+      if (t < SETTLE) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  ["pointerdown", "touchstart", "wheel"].forEach(ev =>
+    listEl.addEventListener(ev, () => { glideId++; }, { passive: true }));
+
+  addBtn.addEventListener("click", addTask);
+
+  // The host resizes the page in many small steps while the keyboard opens, undershoots by ~30px at the very end
+  // and then snaps back up. Glide the chat box through that snap-back instead of letting it jump.
+  (function () {
+    const vv = window.visualViewport;
+    const f = document.querySelector("footer");
+    if (!vv || !f) return;
+    let last = vv.height, maxH = vv.height, dropped = false, clearT = null, pinned = false, settleT = null;
+    // Stop the box from moving at all: once the final keyboard-open height is known (learned after the first
+    // opening), the page is held at that height from the moment the box is tapped, so the host's step-by-step
+    // resize and the final snap-back have nothing left to move.
+    const appEl = document.getElementById("app");
+    const keyOf = () => "addtodo_finalH_" + Math.round(maxH);
+    const unpin = () => { pinned = false; appEl.style.removeProperty("height"); appEl.style.removeProperty("bottom"); };
+    const pin = (h) => { pinned = true; appEl.style.bottom = "auto"; appEl.style.height = h + "px"; };
+    document.addEventListener("focusin", (e) => {
+      if (e.target !== inputEl) return;
+      let fh = 0;
+      try { fh = parseFloat(localStorage.getItem(keyOf())) || 0; } catch (err) {}
+      if (!window.__customKb && fh > 200 && fh < maxH - 150) {
+        // Start the slide from wherever the box is drawn right now (not from the fully closed spot): on a quick
+        // second tap the screen is still growing back from the last close, so a start far below it would sit out
+        // of sight and the box would only appear after a lag.
+        const t0 = f.getBoundingClientRect().top;
+        f.style.setProperty("transition", "none", "important");
+        f.style.transform = "";
+        pin(fh);
+        const dy = Math.max(0, t0 - f.getBoundingClientRect().top);
+        // Slide the box up from the bottom to its resting spot, quickly (the keyboard covers 90% of its travel in
+        // ~0.15 s), so it rises with the keyboard instead of jumping there.
+        f.style.setProperty("transition", "none", "important");
+        f.style.transform = "translateY(" + dy + "px)";
+        void f.offsetHeight;
+        f.style.setProperty("transition", "transform 0.17s cubic-bezier(0.2, 0.7, 0.1, 1)", "important");
+        f.style.transform = "translateY(0)";
+        clearTimeout(clearT);
+        clearT = setTimeout(() => { f.style.removeProperty("transition"); f.style.transform = ""; }, 300);
+      }
+    });
+    document.addEventListener("focusout", (e) => { if (e.target === inputEl) { unpin(); clearTimeout(settleT); } });
+    vv.addEventListener("resize", () => {
+      const h = vv.height, d = h - last;
+      last = h;
+      if (h > maxH) maxH = h;
+      const keyboardUp = h < maxH - 150;
+      clearTimeout(settleT);
+      if (document.activeElement === inputEl && keyboardUp) {
+        settleT = setTimeout(() => {
+          try { localStorage.setItem(keyOf(), String(Math.round(vv.height))); } catch (err) {}
+          if (pinned) pin(Math.round(vv.height));
+        }, 350);
+      }
+      if (document.activeElement === inputEl && keyboardUp) {
+        if (d < 0) dropped = true;
+        else if (d >= 12 && dropped && !pinned) {
+          dropped = false;
+          f.style.setProperty("transition", "none", "important");
+          f.style.transform = "translateY(" + (-d) + "px)";
+          void f.offsetHeight;
+          f.style.setProperty("transition", "transform 0.22s ease-out", "important");
+          f.style.transform = "translateY(0)";
+          clearTimeout(clearT);
+          clearT = setTimeout(() => { f.style.removeProperty("transition"); f.style.transform = ""; }, 300);
+        }
+      } else {
+        dropped = false;
+      }
+    });
+  })();
+  inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") addTask(); });
+
+  // The add button must add the task before anything else happens. Tapping it used to move focus away from the
+  // box first, which closed the keyboard and shifted the layout under the finger, so the tap could be lost.
+  // Now the box keeps focus, and a touch adds the task right when the finger lifts.
+  (function () {
+    addBtn.addEventListener("mousedown", (e) => e.preventDefault());
+    let sx = 0, sy = 0, moved = false;
+    addBtn.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; moved = false; }, { passive: true });
+    addBtn.addEventListener("touchmove", (e) => { const t = e.touches[0]; if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) moved = true; }, { passive: true });
+    addBtn.addEventListener("touchend", (e) => {
+      if (moved) return;
+      e.preventDefault();   // no follow-up mouse events or click, so the task is added exactly once
+      addTask();
+    }, { passive: false });
+  })();
+
+  // ---- Built-in keyboard (touch screens) -------------------------------------------------------------------
+  // The phone's keyboard is never opened (inputmode=none), so the page is never resized and nothing can bounce.
+  (function () {
+    if (!touchScreen) return;
+    window.__customKb = true;
+    try { Object.keys(localStorage).forEach((k) => { if (k.indexOf("addtodo_finalH_") === 0) localStorage.removeItem(k); }); } catch (e) {}
+    inputEl.setAttribute("inputmode", "none");
+    inputEl.setAttribute("autocomplete", "off");
+    inputEl.setAttribute("autocapitalize", "off");
+    inputEl.setAttribute("spellcheck", "false");
+    const appEl = document.getElementById("app");
+    const footerEl = document.querySelector("footer");
+    const kb = document.createElement("div");
+    kb.id = "kb";
+    footerEl.insertAdjacentElement("afterend", kb);
+
+    const BACK_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4F3EF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>';
+    const SHIFT_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 9h-5v6H9v-6H4z"/></svg>';
+    const ENTER_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="6 13 12 19 18 13"/></svg>';
+
+    let page = "abc";      // "abc" letters or "sym" numbers and symbols
+    let shift = 0;          // 0 off, 1 next letter only, 2 caps lock
+    let lastShiftTap = 0;
+
+    function keyEl(name, label, cls, flex) {
+      const b = document.createElement("div");
+      b.className = "kb-key" + (cls ? " " + cls : "");
+      b.setAttribute("data-k", name);
+      if (flex) b.style.flex = flex + " 1 0";
+      if (label.charAt(0) === "<") b.innerHTML = label; else b.textContent = label;
+      return b;
+    }
+    function charRow(chars, pre, post) {
+      const r = document.createElement("div");
+      r.className = "kb-row";
+      if (pre) r.appendChild(pre);
+      Array.from(chars).forEach((c) => {
+        const lab = (page === "abc" && shift) ? c.toUpperCase() : c;
+        r.appendChild(keyEl("c:" + lab, lab));
+      });
+      if (post) r.appendChild(post);
+      return r;
+    }
+    function spacerRow(chars) {
+      const r = charRow(chars);
+      const a = document.createElement("div"); a.className = "kb-spacer";
+      const b = document.createElement("div"); b.className = "kb-spacer";
+      r.insertBefore(a, r.firstChild); r.appendChild(b);
+      return r;
+    }
+    function render() {
+      const inn = document.createElement("div");
+      inn.className = "kb-in";
+      if (page === "abc") {
+        inn.appendChild(charRow("qwertyuiop"));
+        inn.appendChild(spacerRow("asdfghjkl"));
+        inn.appendChild(charRow("zxcvbnm", keyEl("shift", SHIFT_SVG, "fn" + (shift ? " on" : ""), 1.15), keyEl("back", BACK_SVG, "fn", 1.15)));
+      } else {
+        inn.appendChild(charRow("1234567890"));
+        inn.appendChild(charRow("-/:;()$&@\""));
+        inn.appendChild(charRow("+=_.,?!'%", null, keyEl("back", BACK_SVG, "fn", 1.15)));
+      }
+      const last = document.createElement("div");
+      last.className = "kb-row";
+      last.appendChild(keyEl("page", page === "abc" ? "?123" : "ABC", "fn", 0.94));
+      last.appendChild(keyEl("c:,", ","));
+      last.appendChild(keyEl("space", "space", "", 4.2));
+      last.appendChild(keyEl("c:.", "."));
+      last.appendChild(keyEl("enter", ENTER_SVG, "act", 0.94));
+      inn.appendChild(last);
+      kb.innerHTML = "";
+      kb.appendChild(inn);
+    }
+
+    function sel() {
+      const n = inputEl.value.length;
+      const s = inputEl.selectionStart == null ? n : inputEl.selectionStart;
+      const e = inputEl.selectionEnd == null ? s : inputEl.selectionEnd;
+      return [s, e];
+    }
+    function fire() { inputEl.dispatchEvent(new Event("input", { bubbles: true })); }
+    // Keys insert text by script, which does not scroll the one-line box to the caret, so text past the box width
+    // stayed out of sight. After every key the box is scrolled so the caret (and the text being typed) is visible.
+    let measureCtx = null;
+    function showCaret() {
+      const apply = () => {
+        const c = sel()[1];
+        if (c >= inputEl.value.length) { inputEl.scrollLeft = inputEl.scrollWidth; return; }
+        try {
+          if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
+          const cs = getComputedStyle(inputEl);
+          measureCtx.font = cs.fontStyle + " " + cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+          const x = measureCtx.measureText(inputEl.value.slice(0, c)).width;
+          const w = inputEl.clientWidth;
+          if (x < inputEl.scrollLeft) inputEl.scrollLeft = Math.max(0, x - 8);
+          else if (x > inputEl.scrollLeft + w - 4) inputEl.scrollLeft = x - w + 8;
+        } catch (err) {}
+      };
+      apply();
+      requestAnimationFrame(apply);
+    }
+    function insert(t) {
+      const [s, e] = sel();
+      inputEl.setRangeText(t, s, e, "end");
+      fire();
+      showCaret();
+    }
+    function backspace() {
+      let [s, e] = sel();
+      if (s === e) {
+        if (s === 0) return false;
+        const ch = Array.from(inputEl.value.slice(0, s)).pop();
+        s -= ch.length;
+      }
+      inputEl.setRangeText("", s, e, "end");
+      fire();
+      showCaret();
+      return true;
+    }
+    // First letter of the box and the first letter after ". ", "! " or "? " start as a capital.
+    function autoShift() {
+      if (page !== "abc" || shift === 2) return;
+      const before = inputEl.value.slice(0, sel()[0]);
+      const want = (before.trim() === "" && before.length === 0) || /[.!?]\s$/.test(before) ? 1 : 0;
+      if (want !== shift) { shift = want; render(); }
+    }
+    function press(k) {
+      if (k.indexOf("c:") === 0) {
+        insert(k.slice(2));
+        if (page === "abc" && shift === 1) { shift = 0; render(); }
+        autoShift();
+      } else if (k === "space") {
+        insert(" ");
+        autoShift();
+      } else if (k === "back") {
+        backspace();
+        autoShift();
+      } else if (k === "shift") {
+        const now = Date.now();
+        if (shift === 2) shift = 0;
+        else if (shift === 1 && now - lastShiftTap < 350) shift = 2;
+        else shift = shift ? 0 : 1;
+        lastShiftTap = now;
+        render();
+      } else if (k === "page") {
+        page = page === "abc" ? "sym" : "abc";
+        render();
+        if (page === "abc") autoShift();
+      } else if (k === "enter") {
+        inputEl.blur();
+      }
+    }
+
+    // Keys never take focus away from the box, so the caret stays and the keyboard stays open.
+    kb.addEventListener("mousedown", (e) => e.preventDefault());
+    kb.addEventListener("touchstart", (e) => e.preventDefault(), { passive: false });
+    let downEl = null, repeatT = null, repeatI = null;
+    function stopRepeat() {
+      clearTimeout(repeatT); clearInterval(repeatI); repeatT = repeatI = null;
+      if (downEl) { downEl.classList.remove("down"); downEl = null; }
+    }
+    kb.addEventListener("pointerdown", (e) => {
+      const el = e.target.closest ? e.target.closest(".kb-key") : null;
+      if (!el) return;
+      e.preventDefault();
+      stopRepeat();
+      downEl = el;
+      el.classList.add("down");
+      const k = el.getAttribute("data-k");
+      press(k);
+      if (k === "back") {
+        repeatT = setTimeout(() => { repeatI = setInterval(() => { if (!backspace()) stopRepeat(); else autoShift(); }, 55); }, 380);
+      }
+    });
+    ["pointerup", "pointercancel"].forEach((ev) => document.addEventListener(ev, stopRepeat, true));
+
+    function open() {
+      if (kb.classList.contains("open")) return;
+      page = "abc"; shift = 0;
+      render();
+      autoShift();
+      kb.classList.add("open");
+      appEl.classList.add("kb-open");
+    }
+    function close() {
+      stopRepeat();
+      kb.classList.remove("open");
+      appEl.classList.remove("kb-open");
+    }
+    document.addEventListener("focusin", (e) => { if (e.target === inputEl) open(); });
+    document.addEventListener("focusout", (e) => { if (e.target === inputEl) close(); });
+    // Tapping anywhere outside the chat box and the keyboard puts the keyboard away.
+    document.addEventListener("pointerdown", (e) => {
+      if (document.activeElement !== inputEl) return;
+      const t = e.target;
+      if (t && t.closest && (t.closest("#kb") || t.closest("footer"))) return;
+      inputEl.blur();
+    }, true);
+    if (document.activeElement === inputEl) open();
+  })();
+
+  // When the keyboard is dismissed (swipe/back), drop focus so the caret
+  // disappears and the chat box returns to its narrow width.
+  (function () {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let baseH = vv.height, kbWasOpen = false;
+    // Tapping the box again while the keyboard is still sliding down must not count as "keyboard closed":
+    // each fresh focus forgets the old keyboard, so a late resize from the previous close can't blur the box.
+    document.addEventListener("focusin", (e) => { if (e.target === inputEl) kbWasOpen = false; });
+    function onVV() {
+      if (vv.height > baseH) baseH = vv.height;
+      if (vv.height < baseH - 120) { kbWasOpen = true; return; }
+      if (kbWasOpen) {
+        kbWasOpen = false;
+        if (document.activeElement === inputEl) inputEl.blur();
+      }
+    }
+    vv.addEventListener("resize", onVV);
+    window.addEventListener("orientationchange", () => { setTimeout(() => { baseH = vv.height; kbWasOpen = false; }, 400); });
+  })();
+
+  // Keyboard open/close for the chat box. The screen only shrinks AFTER the keyboard has slid up, so the box has to
+  // be moved by hand: on focus it jumps straight to its final spot above where the keyboard will be (so it is never
+  // hidden behind the keyboard), and the late screen resize only fine-tunes the last few pixels. When the keyboard
+  // closes the box slides down with it. Whether the keyboard is open is tracked here, not guessed from the screen
+  // height, so it also works when the app changes the page height for other reasons.
+  (function () {
+    const footerEl = document.querySelector("footer");
+    if (!footerEl) return;
+    // Fake keyboard animation switched off completely: the phone's own resize moves the box, nothing else may.
+    try { localStorage.removeItem("addtodo_kbH"); } catch (e) {}
+    return;
+    // Inside the Android app the phone itself resizes the page together with the keyboard (see the MainActivity
+    // setup), so the box is already glued to the keyboard and this timed imitation must stay out of the way.
+    try { if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return; } catch (e) {}
+    // Android (app, WebView or browser) always resizes the page together with the keyboard, so the imitation
+    // must never run there, even when Capacitor is not detected (e.g. page loaded from a link): it would move
+    // the box a second time and make it jump.
+    if (/Android/i.test(navigator.userAgent || "")) return;
+    // Any other touch device that is not an iPhone/iPad (Android in desktop-mode, embedded views...) also resizes
+    // the page with the keyboard, so the imitation stays off there too. It also learned a keyboard height after
+    // the first opening and used it on the next ones, which is why only the first opening looked right.
+    try { localStorage.removeItem("addtodo_kbH"); } catch (e) {}
+    if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches && !/iPhone|iPad|iPod/i.test(navigator.userAgent || "")) return;
+    const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    const PAD = "padding-left 0.2s ease, padding-right 0.2s ease";
+    const EASE = "cubic-bezier(0.2, 0.7, 0.1, 1)";
+    // Keyboard timing measured from your recording: it finishes its slide in ~0.3 s, covering half the distance in
+    // the first 50 ms. KB_LAG = how long after focus the keyboard really starts moving; the box waits that long
+    // and then follows the same curve, so both move together.
+    const FADE_MS = 0.15, KB_LAG = 0.03;
+    const bottomOf = () => footerEl.offsetTop + footerEl.offsetHeight;   // layout position, ignores transforms
+    const curTy = () => {                                                // where the box is drawn right now
+      const tf = getComputedStyle(footerEl).transform;
+      return (tf && tf !== "none") ? new DOMMatrixReadOnly(tf).m42 : 0;
+    };
+    let lastBottom = bottomOf(), closedBottom = lastBottom, clearT = null, safetyT = null;
+    let kbOpen = false, kbH = 0;
+    try { kbH = parseFloat(localStorage.getItem("addtodo_kbH")) || 0; } catch (e) {}
+    const guessH = () => kbH || Math.round(window.innerHeight * 0.4);
+    function settle() {
+      clearTimeout(clearT);
+      clearT = setTimeout(() => { footerEl.style.transition = ""; footerEl.style.transform = ""; footerEl.style.opacity = ""; }, 260);
+    }
+    function revertLater() {
+      clearTimeout(safetyT);
+      // If the screen never changes (e.g. a hardware keyboard), put the box back.
+      safetyT = setTimeout(() => { footerEl.style.transform = "translateY(0)"; footerEl.style.opacity = "1"; kbOpen = false; settle(); }, 1500);
+    }
+    function onScreenResize() {
+      clearTimeout(safetyT);
+      const nb = bottomOf();
+      const dy = lastBottom - nb;   // > 0: the box moved up (keyboard opening), < 0: it moved down (closing)
+      lastBottom = nb;
+      if (kbOpen) {
+        const shift = closedBottom - nb;
+        if (shift > 120) {
+          kbH = shift;
+          try { localStorage.setItem("addtodo_kbH", String(Math.round(kbH))); } catch (e) {}
+        } else if (Math.abs(dy) >= 1 && shift < 20) {
+          kbOpen = false;           // the screen is back to full height: the keyboard was closed
+        }
+      } else {
+        closedBottom = nb;
+      }
+      if (Math.abs(dy) < 1) return;
+      // Continue from where the box is drawn right now, so a new resize step never makes it jump.
+      const cur = curTy();
+      if (Math.abs(cur + dy) < 10) {   // the guess was already right: settle silently, no second movement
+        footerEl.style.transition = PAD;
+        footerEl.style.transform = "translateY(0)";
+        settle();
+        return;
+      }
+      footerEl.style.transition = PAD;
+      footerEl.style.transform = "translateY(" + (cur + dy) + "px)";
+      void footerEl.offsetHeight;
+      footerEl.style.transition = PAD + ", transform 0.12s " + EASE;
+      footerEl.style.transform = "translateY(0)";
+      settle();
+    }
+    // The box does not slide: it appears (fades in) straight at its final spot, above the keyboard when the
+    // keyboard opens and at the bottom of the screen when it closes.
+    function appearAt(ty) {
+      clearTimeout(clearT);
+      footerEl.style.transition = PAD;
+      footerEl.style.transform = "translateY(" + ty + "px)";
+      footerEl.style.opacity = "0";
+      void footerEl.offsetHeight;
+      footerEl.style.transition = PAD + ", opacity " + FADE_MS + "s ease " + KB_LAG + "s";
+      footerEl.style.opacity = "1";
+      revertLater();
+    }
+    function rise() {
+      if (kbOpen) return;
+      kbOpen = true;
+      closedBottom = bottomOf();
+      appearAt(-guessH());
+    }
+    function fall() {
+      if (!kbOpen) return;
+      kbOpen = false;
+      appearAt(guessH());
+    }
+    // Neither may start while the finger is still down (the field would slide away from the tap and the
+    // keyboard would not open): both start from focus events.
+    const isField = (t) => t === document.getElementById("task-input");
+    document.addEventListener("focusin", (e) => { if (coarse && isField(e.target)) rise(); });
+    document.addEventListener("focusout", (e) => {
+      // Focus moving to another control (e.g. a button) does not close the keyboard.
+      if (coarse && isField(e.target) && !e.relatedTarget) fall();
+    });
+    window.addEventListener("resize", onScreenResize);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", onScreenResize);
+  })();
+
+  render();
+});
+</script>
+</body>
+</html>
