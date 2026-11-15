@@ -24,7 +24,7 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
   header {
-    margin: 14px 14px 14px 14px;   /* 14px above "Today" (below the status bar), 14px between "Today" and the first task */
+    margin: 18px 14px 12px 14px;   /* 18px above "Today" (below the status bar); 12px margin under the title line = about 18px visible gap from the date text to the first task */
     padding: 0;
     flex-shrink: 0;
     display: flex;
@@ -44,12 +44,14 @@
     display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
     position: relative; top: 1px; margin-bottom: -20px;  /* the 44px tap area must not make the header taller than the title */
   }
-  .hbtn:last-child { margin-right: 1px; }
+  .hbtn:last-child { margin-right: 2px; }
   .hbtn svg { flex-shrink: 0; pointer-events: none; width: 21px; height: 21px; }
-  #instructions-btn svg, #history-btn svg { width: 22px; height: 22px; }
+  #instructions-btn svg, #history-btn svg, #dashboard-btn svg { width: 22px; height: 22px; }
+  #emoji-edit-btn { width: 33px; }   /* its icon is 21px (the others 22px), so every gap between two icons is exactly 12px */
+  @media (max-width: 380px) { .hbtn { width: 28px; } #emoji-edit-btn { width: 27px; } }   /* four icons in line: on narrow phones the boxes get slimmer so the title and date still fit */
   header h1 { margin-left: 0; position: relative; top: 0; }
   #title-time { font-size: inherit; }
-  #title-date { position: relative; top: 1px; word-spacing: -2px; margin-left: 0; font-style: italic; font-size: 15px; font-weight: 600; letter-spacing: 0; color: #F4F3EF; white-space: nowrap; }
+  #title-date { position: relative; top: 0; word-spacing: -2px; margin-left: 0; font-style: italic; font-size: 15px; font-weight: 600; letter-spacing: 0; color: #F4F3EF; white-space: nowrap; }
   #emoji-toggle svg, #add-btn svg { flex-shrink: 0; pointer-events: none; }
   #list {
     flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 0 14px;
@@ -93,10 +95,14 @@
     cursor: pointer;
   }
   .day-btn { position: relative; }
+  /* A long press on a day letter (or any button on the hold screen) must never select its text or open the copy menu */
+  button, .day-btn, .day-btn *, .choose, .choose * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .day-btn .dd { position: absolute; top: 4px; left: 4px; font-size: 8px; transform: scale(0.75); transform-origin: top left; font-weight: 600; line-height: 1; color: #A0A0A0; pointer-events: none; }  /* date number, top-left corner */
   .day-btn.today:not(.active) .dd, .day-btn.active .dd { color: #F4F3EF; }
   .day-btn.today:not(.active) { color: #F4F3EF; }  /* today's letter is white, the other days stay grey */
   .day-btn.active { background: #2E8A57; border-color: #2E8A57; color: #F4F3EF; }
+  .day-btn.once { background: #B8383D; border-color: #B8383D; color: #F4F3EF; }  /* red = once (deadline) loop */
+  .day-btn.once .dd { color: #F4F3EF; }
   .opt-btn {
     flex: 1; height: 34px; border-radius: 10px; padding: 0; gap: 6px;
     background: transparent; border: 1px solid rgba(244, 243, 239, 0.3);
@@ -104,14 +110,30 @@
   }
   .row--held { background: #1F1F1F; }  /* held task keeps the normal task card colour, also while its picker is open */
   .row--choose > *:not(.choose) { visibility: hidden; }
-  .choose { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 45px; padding: 0; }  /* 45px between Notify and Recur */
+  .choose { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 0; }  /* 14px on each side of the Reset button between Notify and Recur */
   .choose button {
     flex: none; width: 96px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; gap: 6px;
-    background: #1F1F1F; border: 0.5px solid rgba(244, 243, 239, 0.3); border-radius: 10px;
+    background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 10px;
     color: #A0A0A0; font-size: 14px; font-weight: 400; cursor: pointer; -webkit-tap-highlight-color: transparent;
   }
   .choose svg { width: 16px; height: 16px; flex-shrink: 0; }
-  .choose button:nth-child(2) svg { width: 15px; height: 15px; }  /* Recur loop icon: slightly smaller so it looks the same size as the bell */
+  .choose button:nth-child(3) svg { width: 15px; height: 15px; }  /* Recur loop icon (third button, after Reset): slightly smaller so it looks the same size as the bell */
+  /* Reset (between Notify and Recur): clears Recur and Notify. Clearly visible when one of them is on, dimmed when neither is. */
+  .choose .reset-btn { width: 34px; color: #F4F3EF; background: none; border: none; border-radius: 0; }
+  .choose .reset-btn svg { width: 18px; height: 18px; }
+  .choose .reset-btn.off { opacity: 0.3; }
+  /* Edit (pencil): bottom-right corner of every task card, mirroring the loop / bell badge in the top-right corner. */
+  .edit-btn {
+    position: absolute; right: 0; bottom: 0; width: 32px; height: 34px; margin: 0; padding: 0 10px 6px 0;
+    background: none; border: none; display: flex; align-items: flex-end; justify-content: flex-end;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: none;
+  }
+  .edit-btn svg { width: 18px; height: 18px; display: block; flex: none; pointer-events: none; }
+  .choose .edit-btn {   /* the hold screen's own button look (frame, 96px width) does not apply to the pencil */
+    position: absolute; right: 0; bottom: 0; flex: none; width: 32px; height: 34px; padding: 0 10px 6px 0; gap: 0;
+    background: none; border: none; border-radius: 0; align-items: flex-end; justify-content: flex-end;
+  }
+  .choose .edit-btn svg { width: 18px; height: 18px; }
   .time-row { justify-content: center; gap: 6px; touch-action: none; user-select: none; }
   .tf {
     flex: none; width: 58px; height: 34px; border-radius: 20px; border: 1px solid rgba(244, 243, 239, 0.3);
@@ -120,30 +142,82 @@
   }
   .tf > span { display: block; will-change: transform; }
   .tf.num { color: #F4F3EF; font-size: 15px; }                            /* a number is showing */
-  .tf.set { background: #C23A3F; border-color: #C23A3F; }                /* red once released, like the green active day */
+  .tf.set { background: #C23A3F; border-color: #C23A3F; }
+  .time-row.endless .tf.set { background: #2E8A57; border-color: #2E8A57; }   /* endless loop = green */                /* red once released, like the green active day */
   .bell-badge {
     position: absolute; top: 6px; right: 10px;
     width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
   }
-  .combo-badge { position: absolute; top: 7.5px; right: 11.5px; width: 15px; height: 15px; }
+  .combo-badge { position: absolute; top: 8px; right: 12px; width: 14px; height: 14px; }   /* same centre as the single badges */
   .combo-badge svg { position: absolute; display: block; }
   /* Fixed layout: loop underneath at the top left, bell always on top of it at the bottom right (thin dark edge). */
   .combo-badge .cb-loop { left: 0; top: 0; z-index: 1; }
-  .combo-badge .cb-bell { right: -1.82px; bottom: 0; z-index: 2; filter: drop-shadow(0 0 0.8px #1F1F1F) drop-shadow(0 0 0.8px #1F1F1F); }
+  .combo-badge .cb-bell { right: -1.7px; bottom: 0; z-index: 2; filter: drop-shadow(0 0 0.8px #1F1F1F) drop-shadow(0 0 0.8px #1F1F1F); }
   .row--combo .bell-badge, .row--combo .loop-badge { display: none; }  /* loop + bell together show one combined icon */
   .bell-badge svg, .loop-badge svg { display: block; flex: none; margin: 0; }  /* both icons centred on the same vertical line */
+  .loop-badge svg { width: 14px; height: 14px; }   /* loop 14px, bell 15px; the combined icon keeps the old ratio (~0.715): loop 10px, bell 10.77px */
+  .bell-badge svg { width: 15px; height: 15px; }
+  .combo-badge .cb-loop { width: 10px; height: 10px; }
+  .combo-badge .cb-bell { width: 10.77px; height: 10.77px; }
   .task-text {
-    flex: 1; color: #F4F3EF; font-size: 16px; line-height: 19px; font-weight: 400;
+    flex: 1; color: #F4F3EF; font-size: 16px; line-height: 21px; font-weight: 400;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     margin-right: 16px;
   }
+  /* ---- Subtasks, deadline and lock ---- */
+  .row--sub .task-text { margin-right: 16px; }   /* same text width as every other card: the lock sits in the bottom-right corner and never narrows the text, so it cannot push a line down */
+  .sub-meta { position: absolute; right: 11.5px; bottom: 6px; display: flex; align-items: center; gap: 10px; font-size: 12px; line-height: 14px; color: #A0A0A0; pointer-events: none; }
+  .sub-meta > span { display: flex; align-items: center; gap: 3px; }
+  .sub-meta svg { display: block; flex: none; }
+  .sub-meta b { font-weight: 400; }
+  .sub-meta .sub-lock { color: #F4F3EF; position: relative; width: 15px; height: 15px; }   /* 15px lock, the number sits inside its body */
+  .sub-meta .sub-lock svg { position: absolute; left: 0; top: 0; }
+  .sub-meta .sub-lock b { position: absolute; left: 0; right: 0; top: 6px; text-align: center; font-size: 8px; line-height: 8px; font-weight: 600; }
+  .sub-meta .sub-lock.met { color: #4C8DF6; }   /* blue only when ALL subtasks are completed; today's quota met but some left = lock with tick in white */
+  .row--flash-green .sub-meta, .row--flash-red .sub-meta, .row--flash-white .sub-meta { opacity: 0; transition: none; }
+  .sub-slot { flex-shrink: 0; position: relative; display: flex; flex-direction: column; gap: 8px; margin: 0 6px; }   /* no box of its own, the Add To Do screen shows through; subtask cards sit 20px from the screen edge (14px list padding + 6px), 8px apart, so the subtask text starts on the same vertical line as the main task text (69px) */
+  .sub-empty { text-align: center; font-style: italic; color: #A0A0A0; font-size: 14px; line-height: 18px; padding: 6px 0; }   /* plain text between the tasks, no box */
+  .sub-item { position: relative; display: flex; align-items: center; gap: 12px; height: 61px; flex: none; padding: 0 14px 0 16px; background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 16px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }   /* a card like the main screen's tasks */
+  .sub-item.drag { z-index: 3; background: #2A2A2A; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); }
+  .sub-tick { position: relative; flex: none; width: 24px; height: 24px; padding: 0; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: none; }   /* a 24px box like History's tick/cross, the 18px circle is drawn inside it */
+  .sub-tick::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; border: 1.6px solid #A0A0A0; background: transparent; }
+  .sub-tick svg { position: relative; width: 10px; height: 10px; }
+  .sub-item.done .sub-tick::before { background: #4C8DF6; border-color: #4C8DF6; }
+  .sub-item.done .sub-text { color: #F4F3EF; }   /* subtask text is always white, never grey */
+  .sub-text { flex: 1; min-width: 0; margin-right: 26px; color: #F4F3EF; font-size: 14px; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+  .sub-del { position: absolute; right: 6px; bottom: 0; width: 30px; height: 28px; padding: 0 6px 6px 0; margin: 0; background: none; border: none; display: flex; align-items: flex-end; justify-content: flex-end; cursor: pointer; touch-action: none; }
+  .sub-del svg { display: block; pointer-events: none; }
+  .input-bar { transition: padding 0.2s cubic-bezier(0.2, 0.7, 0.1, 1), margin 0.2s cubic-bezier(0.2, 0.7, 0.1, 1); }
+  /* adding subtasks: the box keeps the normal task box width (no margin change); only the smile button is hidden */
+  .input-bar.sub-mode #emoji-toggle { display: none; }
+  .input-bar.sub-mode #task-input { margin-left: 14px; }   /* smile button hidden: the text starts 25px from the box's outer left edge (1px border + 10px padding + 14px) */
+  .choose.has-sub button.reset-btn svg { width: 16px; height: 16px; }   /* the Subtask square is the first child, so the nth-child(3) rule now lands on Reset: keep the old sizes */
+  .choose.has-sub button.ch-days svg { width: 15px; height: 15px; }
+  .choose.has-sub { gap: 10px; padding-right: 28px; }   /* centred, then nudged 10px left */   /* Task, Notify, Reset, Recur: the group ends well before the pencil in the bottom-right corner */   /* Task, Notify, Recur as one centred group (Reset is hidden for now) */
+  .choose.has-sub button { width: 85px; }
+  .choose.has-sub .edit-btn { width: 32px; height: 24px; padding: 0 10px 6px 0; }   /* pencil back at its original bottom-right spot */
+  .choose.has-sub .reset-btn { width: 28px; height: 28px; background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 10px; }   /* Reset: smaller icon-only box, same background and border as Task / Notify / Recur */
+  .choose.has-sub .reset-btn.off { opacity: 1; }   /* the box and border keep full strength; only the icon dims when there is nothing to reset */
+  .choose.has-sub .reset-btn.off svg { opacity: 0.3; }
+  .choose.has-sub .ch-sub { position: relative; left: 2px; }   /* Task no longer nudged left: Task to Notify = 24px, the vertical line in the middle (12px each side) */
+  .choose.has-sub .ch-time { position: relative; left: 4px; margin-left: 10px; }   /* Notify, Reset and Recur sit 4px further right (Task stays); Task to Notify: 10px gap + 10px margin + Task's 4px nudge + this 4px = 28px apart */
+  .choose.has-sub .ch-time::before { content: ""; position: absolute; right: calc(100% + 11.5px); top: 50%; height: 40px; width: 0; transform: translateY(-50%); border-left: 1px solid rgba(244, 243, 239, 0.3); pointer-events: none; }   /* 40px, 1px-thick vertical line exactly in the middle of the 22px gap between the Task and Notify buttons: its centre is 11px from each button's outer edge (the 1px button border is allowed for) */
+  .choose.has-sub .ch-time::after { content: ""; position: absolute; left: calc(100% + 1px); top: 50%; margin-top: -0.5px; width: 52px; height: 0; border-top: 1px solid rgba(244, 243, 239, 0.3); pointer-events: none; }   /* 52px horizontal line from Notify to Recur, passing under Reset */
+  .choose.has-sub .reset-btn { position: relative; left: 4px; margin: 0 2px; }   /* Notify to Reset and Reset to Recur gaps = 10px + 2px = 12px; positioned so it paints over the Notify-to-Recur line; 4px right like Notify and Recur */
+  .choose.has-sub .ch-days { position: relative; left: 4px; }   /* Recur 4px right, like Notify and Reset */
+  .choose .ch-sub svg { width: 17px; height: 17px; }
+  .choose .ch-days svg { width: 15px; height: 15px; }   /* Recur loop icon: 15px */
+  #lock-toast { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom)); background: #1F1F1F; border: 0.5px solid rgba(244, 243, 239, 0.3); border-radius: 16px; padding: 8px 14px; color: #F4F3EF; font-size: 12px; white-space: nowrap; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 50; }
+  #lock-toast.show { display: block; animation: toastIn 0.18s ease-out; }
   #undo-toast {
-    position: absolute; bottom: calc(86px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: calc(88px + env(safe-area-inset-bottom) - var(--bottom-trim, 0px)); left: 50%; transform: translateX(-50%);
     background: #1F1F1F; border: 0.5px solid rgba(244, 243, 239, 0.3); border-radius: 16px;
-    padding: 8px 14px; display: none; align-items: center; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    padding: 8px 15px; display: none; align-items: center; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     z-index: 50;
   }
   #undo-toast.show { display: flex; animation: toastIn 0.18s ease-out; }
+  #undo-toast { transition: bottom 0.2s cubic-bezier(0.2, 0.7, 0.1, 1); }
+  #app.kb-open #undo-toast { bottom: calc(304px + env(safe-area-inset-bottom)); }   /* keyboard open: the undo button rides above the keyboard and the chat box (20px above the box, like when it is closed) */
   @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(6px);} to { opacity: 1; transform: translateX(-50%) translateY(0);} }
   #undo-btn { background: none; border: none; padding: 0; display: flex; cursor: pointer; }
   /* Reordering: a screen-colour rectangle sits under the dragged card and above the cards sliding past it,
@@ -188,7 +262,7 @@
   }
   #task-input {
     flex: 1; background: transparent; border: none; outline: none;
-    color: #F4F3EF; font-size: 16px; line-height: 20px; margin-left: 2px;
+    color: #F4F3EF; font-size: 16px; line-height: 20px; margin-left: -2px;
     padding: 0; text-align: left; margin-top: 4px;
   }
   #task-input::placeholder { color: #A0A0A0; font-style: normal; font-size: 17px; }
@@ -218,11 +292,11 @@
   .my-emoji-btn:focus, .available-emoji-btn:focus, .my-emoji-btn:active, .available-emoji-btn:active { border-color: transparent; }
   #emoji-panel button { flex: 0 0 calc((100% - 32px) / 9); width: auto; height: auto; aspect-ratio: 1 / 1; }
   .row--flash-green { background: #2E8A57 !important; border-color: transparent !important; transition: background 0.15s ease; }
-  .row--flash-green .task-text, .row--flash-green .emoji-slot, .row--flash-green .loop-badge, .row--flash-green .bell-badge, .row--flash-green .combo-badge { opacity: 0; transition: none; }
+  .row--flash-green .task-text, .row--flash-green .emoji-slot, .row--flash-green .loop-badge, .row--flash-green .bell-badge, .row--flash-green .combo-badge, .row--flash-green .edit-btn { opacity: 0; transition: none; }
   .row--flash-red { background: #C0473A !important; border-color: transparent !important; transition: background 0.15s ease; }
-  .row--flash-red .task-text, .row--flash-red .emoji-slot, .row--flash-red .loop-badge, .row--flash-red .bell-badge, .row--flash-red .combo-badge { opacity: 0; transition: none; }
+  .row--flash-red .task-text, .row--flash-red .emoji-slot, .row--flash-red .loop-badge, .row--flash-red .bell-badge, .row--flash-red .combo-badge, .row--flash-red .edit-btn { opacity: 0; transition: none; }
   .row--flash-white { background: #F4F3EF !important; border-color: transparent !important; transition: background 0.15s ease; }
-  .row--flash-white .task-text, .row--flash-white .emoji-slot, .row--flash-white .loop-badge, .row--flash-white .bell-badge, .row--flash-white .combo-badge { opacity: 0; transition: none; }
+  .row--flash-white .task-text, .row--flash-white .emoji-slot, .row--flash-white .loop-badge, .row--flash-white .bell-badge, .row--flash-white .combo-badge, .row--flash-white .edit-btn { opacity: 0; transition: none; }
   .center-delete-icon {
     position: absolute; top: 50%; left: 50%; z-index: 5;
     display: flex; align-items: center; justify-content: center;
@@ -246,6 +320,113 @@
   }
   #history-overlay.show { display: block; animation: overlayIn 0.18s ease-out; }
   @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+  #dashboard-overlay {
+    position: fixed; inset: 0; background: rgba(10,10,10,0.72);
+    display: none; z-index: 100;
+  }
+  #dashboard-overlay.show { display: block; animation: overlayIn 0.18s ease-out; }
+  #dashboard-panel {
+    position: absolute; top: var(--panel-top, calc(env(safe-area-inset-top) + 81px));
+    left: 14px; right: 14px;
+    bottom: var(--panel-bottom, calc(74px + env(safe-area-inset-bottom)));
+    background: #141414;
+    border-radius: 16px; border: 1px solid rgba(244, 243, 239, 0.3);
+    padding: 18px; display: flex; flex-direction: column;
+    transform: scale(0.92); opacity: 0; transform-origin: top right;
+    transition: transform 0.18s ease-out, opacity 0.18s ease-out;
+    -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+    box-sizing: border-box;
+  }
+  #dashboard-overlay.show #dashboard-panel { transform: scale(1); opacity: 1; }
+  #dashboard-panel { padding-top: 14px; }   /* 14px + ~4px above the title letters = 18px visible gap from the panel's top border to the title */
+  #dashboard-body { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; }
+  .dash-card { flex: none; background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 16px; padding: 14px; }
+  .dash-wk-scroll { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .dash-wk-scroll::-webkit-scrollbar { display: none; }
+  .dash-title { color: #F4F3EF; font-size: 14px; line-height: 18px; font-weight: 700; margin-bottom: 12px; }
+  .dash-chart { display: flex; justify-content: space-between; gap: 4px; }
+  .dash-day { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+  .dash-bars { height: 112px; display: flex; align-items: flex-end; gap: 3px; }
+  .dash-bar { width: 11px; border-radius: 4px 4px 0 0; position: relative; }
+  .dash-bar.tick { background: #4CC97F; }
+  .dash-bar.cross { background: #E5484D; }
+  .dash-bar span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 2px; color: #A0A0A0; font-size: 10px; line-height: 10px; font-weight: 600; }
+  .dash-label { margin-top: 6px; color: #8C8C8C; font-size: 12px; line-height: 12px; font-weight: 600; }
+  .dash-label.today { color: #F4F3EF; }
+  .dash-day.today .dash-bar span { color: #F4F3EF; }
+  .dash-legend { display: flex; align-items: center; gap: 14px; margin-top: 12px; color: #A0A0A0; font-size: 12px; line-height: 12px; }
+  .dash-legend span { display: flex; align-items: center; }
+  .dash-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+  .dash-stats { display: flex; }
+  .dash-stat { flex: 1; text-align: center; }
+  .dash-stat b { display: block; color: #F4F3EF; font-size: 24px; line-height: 28px; font-weight: 700; }
+  .dash-stat span { color: #A0A0A0; font-size: 12px; line-height: 16px; }
+  .dash-legend svg { display: block; }
+  .dash-burn { display: flex; align-items: center; gap: 12px; }
+  .dash-burn b { flex: none; font-size: 22px; line-height: 26px; font-weight: 700; }
+  .dash-burn-bar { flex: 1; height: 10px; border-radius: 5px; background: #E5484D; overflow: hidden; }
+  .dash-burn-bar i { display: block; height: 100%; background: #4CC97F; }
+  .dash-top { flex: none; display: flex; gap: 8px; align-items: stretch; }
+  .dash-top > .dash-card { min-width: 0; padding: 10px; }
+  .dash-left { flex: 1 1 0; display: flex; flex-direction: column; }
+  .dash-left .dash-burn { flex: 1; gap: 6px; }
+  .dash-left .dash-burn b { font-size: 14px; line-height: 16px; }
+  .dash-top > .dash-right { order: -1; flex: none; width: 96px; height: 92px; box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; }
+  .dash-right .dash-title { margin-bottom: 0; text-align: left; }
+  .dash-donut { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  .dash-donut svg { width: 62px; height: 62px; flex: none; display: block; overflow: visible; }
+  .dash-grid { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dash-mini { min-width: 0; box-sizing: border-box; padding: 14px 6px; text-align: center; background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 16px; }
+  .dash-mini b { display: block; color: #F4F3EF; font-size: 24px; line-height: 28px; font-weight: 700; }
+  .dash-mini span { display: block; margin-top: 3px; color: #A0A0A0; font-size: 11px; line-height: 14px; font-weight: 600; }
+  .dash-emojis { display: flex; align-items: center; gap: 8px; }
+  .dash-end { flex: none; display: flex; }
+  .dash-emoji-row { flex: 1; min-width: 0; display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; }
+  .dash-emoji-row::-webkit-scrollbar { display: none; }
+  .dash-emoji-row > :first-child { margin-left: auto; }
+  .dash-emoji-row > :last-child { margin-right: auto; }
+  .dash-emoji { flex: none; text-align: center; }
+  .dash-emoji em { display: block; font-style: normal; font-size: 26px; line-height: 32px; }
+  .dash-emoji span { display: block; color: #A0A0A0; font-size: 11px; line-height: 14px; font-weight: 600; }
+  .dash-none { color: #8C8C8C; font-size: 12px; }
+  /* Task ✓ Today: a row of donut progress charts, 5 fit in a line, scroll left for more */
+  .dash-tt-row { display: flex; gap: 3px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .dash-tt-row::-webkit-scrollbar { display: none; }
+  .dash-tt { flex: none; width: calc((100% - 12px) / 5); display: flex; flex-direction: column; align-items: center; scroll-snap-align: start; }
+  .dash-tt-ring { position: relative; width: 100%; max-width: 56px; aspect-ratio: 1 / 1; margin-top: -4px; }   /* To Do's donut shape (ring r30 / stroke 12 in a 100-unit box), as big as the width allows (up to 56px) so 5 fit in a line */
+  .dash-tt-ring svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .dash-tt-mid { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1; }   /* the task's emoji in the middle of the ring */
+  .dash-tt-cnt { margin-top: -5px; width: 100%; justify-content: center; display: flex; align-items: center; gap: 3px; color: #F4F3EF; font-size: 10px; line-height: 13px; font-weight: 700; }   /* tick + done/target under the donut */
+  .dash-tt-empty .dash-tt-cnt, .dash-tt-empty .dash-tt-mid { color: rgba(244,243,239,0.25); }
+  .dash-tt-dot { display: block; width: 7px; height: 7px; border-radius: 50%; background: rgba(244,243,239,0.25); }   /* a drawn dot (not a text •) so it sits exactly in the donut's centre */
+  .dash-tt-cnt svg { width: 11px; height: 11px; flex: none; display: block; }
+  .dash-mini span svg { vertical-align: -2px; }
+  .dash-mini span { font-size: 12px; line-height: 14px; }
+  .dash-pair { flex: none; display: flex; gap: 8px; align-items: flex-start; }
+  .dash-pair > .dash-card { flex: 1 1 0; min-width: 0; padding: 10px; }
+  .dash-rt { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; }
+  .dash-rt th:nth-child(1) { width: 16px; }
+  .dash-rt th:nth-child(3) { width: 36px; }
+  .dash-rt th:nth-child(4) { width: 40px; }
+  .dash-rt-wrap { max-height: 100px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .dash-rt th { position: sticky; top: 0; z-index: 1; background: #1F1F1F; padding: 0 0 4px; color: #8C8C8C; font-size: 12px; line-height: 14px; font-weight: 600; }
+  .dash-rt td { padding: 4px 0; color: #F4F3EF; font-size: 12px; line-height: 20px; font-weight: 600; }
+  .dash-rt td:first-child { color: #8C8C8C; }
+  .dash-rt td.e { font-size: 16px; }
+  .dash-rt td.ph { color: #5E5E5E; }
+  .dash-table { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; }
+  .dash-table th:first-child { width: 48px; }
+  .dash-table th:last-child { width: 50px; }
+  .dash-table th, .dash-table td { padding: 8px 0; color: #F4F3EF; font-size: 12px; line-height: 18px; font-weight: 600; }
+  .dash-table thead th { color: #8C8C8C; font-size: 12px; font-weight: 600; padding-top: 0; }
+  .dash-table thead th.today { color: #F4F3EF; }
+  .dash-table .rowh { color: #8C8C8C; font-size: 12px; text-align: left; width: 48px; }
+  .dash-table td.day { color: #8C8C8C; }
+  .dash-table td.day.zero { color: #5E5E5E; }
+  .dash-table td.day.today { color: #F4F3EF; }
+  .dash-table thead th:last-child { color: #8C8C8C; }
+  .dash-table td.total { border-left: 1px solid rgba(244, 243, 239, 0.3); }
+  .dash-table svg, .dash-card svg text { font-family: inherit; }
   #history-panel {
     position: absolute; top: var(--panel-top, calc(env(safe-area-inset-top) + 81px));
     left: 14px; right: 14px;
@@ -259,11 +440,14 @@
     box-sizing: border-box;
   }
   #history-overlay.show #history-panel { transform: scale(1); opacity: 1; }
+  #history-panel { padding-top: 14px; }   /* 18px visible gap from the panel's top border to the title */
   .history-head {
     display: flex; align-items: center; justify-content: space-between;
-    height: 22px; margin-bottom: 15px; flex-shrink: 0;   /* 15px = 14px visible gap from the bottom of the day name's letters (the tail of the y in Today/Monday) to the first card; same 22px title row as Instruction and Customize, so the day name sits at the same height; the 36px arrows stay centred on the title and overflow equally above and below */
+    height: 22px; margin-bottom: 13px; flex-shrink: 0;   /* 13px = 16px visible gap from the bottom of the day name's letters (the tail of the y in Today/Monday) to the first card; same 22px title row as Instruction and Customize, so the day name sits at the same height; the 36px arrows stay centred on the title and overflow equally above and below */
   }
   .history-head h2 { color: #F4F3EF; font-size: 22px; line-height: 1; font-weight: 700; margin: 0; }
+  .history-head.dash-head { margin-bottom: 13px; }   /* "Dashboard" has no descender letters, so 13px gives an 18px visible gap from the title to the first card */
+  .history-head h2 .history-date { font-size: 11px; font-style: italic; font-weight: 700; color: #F4F3EF; position: relative; top: 0; }
   #history-list {
     overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
     -webkit-overflow-scrolling: touch;
@@ -271,10 +455,11 @@
   .history-row {
     display: flex; align-items: center; gap: 10px;
     position: relative;
-    background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 16px; padding: 10px 14px 13px;
+    background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 16px; padding: 0 14px;
+    height: 61px; flex: none;   /* fixed height for 2 lines of text; the tick/cross and the text are always centred vertically in the card */
   }
   .history-icon {
-    width: 24px; height: 24px; flex-shrink: 0;
+    width: 24px; height: 24px; flex-shrink: 0; overflow: visible;
     display: flex; align-items: center; justify-content: center;
     font-size: 18px; font-weight: 700;
   }
@@ -336,8 +521,9 @@
     box-sizing: border-box;
   }
   #emoji-customize.show #emoji-customize-panel { transform: scale(1); opacity: 1; }
-  .customize-head { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 11px; flex-shrink: 0; }
-  .customize-head h2 { color: #F4F3EF; font-size: 22px; line-height: 1; font-weight: 700; margin: 0; }  /* line-height 1 + 11px margin = 14px visible gap from the "Customize" letters to the My Emojis box */
+  #emoji-customize-panel { padding-top: 14px; }   /* 18px visible gap from the panel's top border to the title */
+  .customize-head { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 13px; flex-shrink: 0; }
+  .customize-head h2 { color: #F4F3EF; font-size: 22px; line-height: 1; font-weight: 700; margin: 0; }  /* line-height 1 + 13px margin = 18px visible gap from the "Customize" letters to the My Emojis box */
   
   .my-emojis-box {
     background: #1F1F1F;
@@ -443,8 +629,9 @@
     box-sizing: border-box;
   }
   #instructions-overlay.show #instructions-panel { transform: scale(1); opacity: 1; }
-  .instructions-head { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 11px; flex-shrink: 0; }
-  .instructions-head h2 { color: #F4F3EF; font-size: 22px; line-height: 1; font-weight: 700; margin: 0; }  /* line-height 1 + 11px margin = 14px visible gap from the "Instruction" letters to the first card */
+  #instructions-panel { padding-top: 14px; }   /* 18px visible gap from the panel's top border to the title */
+  .instructions-head { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 13px; flex-shrink: 0; }
+  .instructions-head h2 { color: #F4F3EF; font-size: 22px; line-height: 1; font-weight: 700; margin: 0; }  /* line-height 1 + 13px margin = 18px visible gap from the "Instruction" letters to the first card */
   #instructions-scroll {
     flex: 1; min-height: 0; overflow-y: auto;
     -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain;
@@ -471,7 +658,7 @@
   }
   .instruction-card-note {
     color: #8C8C8C; font-size: 12.5px; line-height: 17px; font-style: italic;
-    margin: 10px 0 0; padding-top: 10px; border-top: 1px solid rgba(244, 243, 239, 0.08);
+    margin: 10px 0 0; padding-top: 10px; border-top: 1px solid rgba(244, 243, 239, 0.3);
   }
   #instructions-confirm-row {
     display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
@@ -513,6 +700,9 @@
     <button id="history-btn" class="hbtn" type="button" aria-label="Task history">
       <svg width="24" height="24" viewBox="0 0 24 24" stroke="#F4F3EF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
     </button>
+    <button id="dashboard-btn" class="hbtn" type="button" aria-label="Dashboard">
+      <svg width="24" height="24" viewBox="0 0 24 24" stroke="#F4F3EF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"><circle cx="12" cy="12" r="9.5"/><line x1="7.5" y1="16" x2="7.5" y2="12"/><line x1="12" y1="16" x2="12" y2="7.5"/><line x1="16.5" y1="16" x2="16.5" y2="10.2"/></svg>
+    </button>
   </header>
   <div id="list"></div>
   <footer>
@@ -534,7 +724,7 @@
   </footer>
   <div id="undo-toast">
     <button id="undo-btn" aria-label="Undo">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#F4F3EF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F4F3EF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
     </button>
   </div>
 
@@ -560,6 +750,14 @@
         </div>
       </div>
       <div id="history-list"></div>
+    </div>
+  </div>
+  <div id="dashboard-overlay">
+    <div id="dashboard-panel">
+      <div class="history-head dash-head">
+        <h2>Dashboard</h2>
+      </div>
+      <div id="dashboard-body"></div>
     </div>
   </div>
   <div id="instructions-overlay">
@@ -590,7 +788,68 @@ document.addEventListener("DOMContentLoaded", () => {
   const REORDER_THRESHOLD = 1.1;
   const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"]; // Sun..Sat, matches Date#getDay()
   const LOOP_ICON_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4CC97F" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
-  function hasActiveLoop(task) { return !!(task.repeatDays && task.repeatDays.some(Boolean)); }
+  function hasActiveLoop(task) { if (task.loopMode === "once") syncOnce(task); return !!(task.repeatDays && task.repeatDays.some(Boolean)); }
+  // Loop modes: green = endless (repeats on the chosen weekdays), red = once (runs only on the chosen dates, then ends).
+  const LOOP_ICON_RED = LOOP_ICON_SVG.replace(/#4CC97F/g, "#E5484D");
+  function loopSvgFor(task) { return task && task.loopMode === "once" ? LOOP_ICON_RED : LOOP_ICON_SVG; }
+  function tplDue(tpl, ds, idx) { return tpl.loopMode === "once" ? !!(tpl.onceDates && tpl.onceDates.indexOf(ds) >= 0) : !!(tpl.repeatDays && tpl.repeatDays[idx]); }
+  function tplFromTask(t) { return { text: t.text, icon: t.icon, repeatDays: t.repeatDays.slice(), remindAt: t.remindAt ? { ...t.remindAt } : null, loopMode: t.loopMode === "once" ? "once" : null, onceDates: t.loopMode === "once" && t.onceDates ? t.onceDates.slice() : null, subtasks: cloneSubs(t.subtasks, t.loopMode === "once") }; }
+  function taskFromTpl(tpl, loopId) { return { id: "t" + (uid++), text: tpl.text, icon: tpl.icon, repeatDays: tpl.repeatDays.slice(), loopId, remindAt: tpl.remindAt ? { ...tpl.remindAt } : null, loopMode: tpl.loopMode === "once" ? "once" : null, onceDates: tpl.loopMode === "once" && tpl.onceDates ? tpl.onceDates.slice() : null, subtasks: cloneSubs(tpl.subtasks, tpl.loopMode === "once") }; }
+  // Red (once) loop: each chosen weekday becomes its next calendar date, counted from today.
+  // A once loop is anchored to today: dates before today drop out, and the weekday buttons are derived from the dates that are left
+  // (so tomorrow the button of the day that was "today" yesterday is off).
+  function onceDaysOf(dates) { const out = [false, false, false, false, false, false, false]; let any = false; const t0 = todayStr(); (dates || []).forEach((d) => { if (d > t0) { out[weekdayForDateStr(d)] = true; any = true; } }); return any ? out : null; }   // only days AFTER today: today is never a red day, so on the last day the red loop mark is gone
+  function syncOnce(task) {
+    if (task.loopMode !== "once" || !task.onceDates || !task.onceDates.length) return;
+    const t0 = todayStr(), keep = task.onceDates.filter((d) => d >= t0), days = onceDaysOf(keep) || [false, false, false, false, false, false, false];
+    if (!keep.length) return;
+    if (keep.length !== task.onceDates.length || (task.repeatDays || []).join() !== days.join()) {
+      task.onceDates = keep; task.repeatDays = days;
+      if (task.loopId) { loopTemplates[task.loopId] = tplFromTask(task); saveLoopTemplates(); }
+      saveTasks();
+    }
+  }
+  // Adding a subtask to a task that already has a once loop turns it into a deadline: every day from today to the last once day is on.
+  function makeDeadline(task) {
+    if (task.loopMode !== "once" || !task.onceDates || !task.onceDates.length) return;
+    const t0 = todayStr(), last = task.onceDates.filter((d) => d >= t0).sort().pop();
+    if (!last) return;
+    const dates = []; for (let d = t0; d <= last; d = addDaysToDateStr(d, 1)) dates.push(d);
+    task.onceDates = dates; task.repeatDays = onceDaysOf(dates) || [false, false, false, false, false, false, false];
+    if (task.loopId) { loopTemplates[task.loopId] = tplFromTask(task); saveLoopTemplates(); }
+  }
+  function computeOnceDates(days) { const t0 = todayStr(), dow = weekdayForDateStr(t0), out = []; days.forEach((on, i) => { if (on) out.push(addDaysToDateStr(t0, (i - dow + 7) % 7)); }); return out.sort(); }
+  // ---- Subtasks, deadline and lock ----
+  // task.subtasks = [{ id, text, done, doneOn }]. Subtasks never reach the history, stats or rankings: only the parent task does.
+  // Red (deadline) loops keep subtask progress from day to day; green (endless) loops start every recur day with all ticks cleared.
+  function cloneSubs(subs, keepProgress) { return subs && subs.length ? subs.map((x) => ({ id: x.id, text: x.text, done: keepProgress ? !!x.done : false, doneOn: keepProgress && x.done ? (x.doneOn || null) : null })) : undefined; }
+  // Today's quota for a task with subtasks. ds = the day being judged (today, or the day a rollover is closing).
+  //  quota = ceil( subtasks still open at the start of the day / red days left including today ); green and no-recur tasks count one day.
+  //  Subtasks ticked today stay in the day's total, so adding or deleting a subtask moves the quota immediately.
+  function subState(task, ds) {
+    ds = ds || todayStr();
+    const subs = task.subtasks || [];
+    let open = 0, doneToday = 0;
+    subs.forEach((x) => { if (!x.done) open++; else if (x.doneOn === ds) doneToday++; });
+    let days = 1;
+    if (task.loopMode === "once" && task.onceDates && task.onceDates.length) days = task.onceDates.filter((d) => d > ds).length + 1;   // the days still to come plus today
+    const quota = Math.ceil((open + doneToday) / days);
+    const left = Math.max(0, quota - doneToday);
+    return { total: subs.length, quota, left, met: left === 0, doneToday, days };
+  }
+  function unlockedSub(task) { return !!(task.subtasks && task.subtasks.length && subState(task).met); }   // unlocked: only the tick (swipe right) is possible
+  function tickBlocked(task) { return !!(task.subtasks && task.subtasks.length && !subState(task).met); }
+  function dayResult(task, ds) { return task.subtasks && task.subtasks.length && subState(task, ds).met ? "tick" : "cross"; }
+  const SUB_ATTR = 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
+  const SUBS_LIST_PATHS = '<circle cx="5" cy="6" r="2"/><line x1="11" y1="6" x2="21" y2="6"/><circle cx="5" cy="12" r="2"/><line x1="11" y1="12" x2="21" y2="12"/><circle cx="5" cy="18" r="2"/><line x1="11" y1="18" x2="21" y2="18"/>';
+  const SUBS_BTN_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4C8DF6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><polyline points="8 12.3 10.8 15 16 9.3"/></svg>';   // Task icon (blue): a ticked box
+  const LOCK_BODY = '<rect x="3" y="9" width="18" height="14" rx="3"/><path d="M7.5 9V6.5a4.5 4.5 0 0 1 9 0V9"/>';
+  // 15px lock: the number sits inside the lock body (shrinks for 2 and 3 digits)
+  const lockSvg = (n) => { const s = String(n), fs = s.length > 2 ? 7 : s.length > 1 ? 9 : 11; return '<svg width="15" height="15" viewBox="0 0 24 24" ' + SUB_ATTR + '>' + LOCK_BODY + '<text x="12" y="' + (16 + fs * 0.36).toFixed(1) + '" text-anchor="middle" font-size="' + fs + '" font-weight="600" fill="currentColor" stroke="none" style="font-family:inherit">' + s + '</text></svg>'; };
+  // completed = unlocked padlock: same tall body, the shackle is attached on the left only and its right leg ends well above the body (clearly open), tick inside
+  const LOCK_OK_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" style="overflow:visible" ' + SUB_ATTR + '><rect x="3" y="10" width="18" height="13" rx="3"/><path d="M7.5 10V6a4.5 4.5 0 0 1 9 0"/><polyline points="8.5 16.5 11 19 15.5 14"/></svg>';
+  const SUB_TICK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1F1F1F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  const SUB_DEL_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B8342A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
   const DEMO_TASKS = [
     { id: "demo1", text: "Complete the pending work and send the final update by evening", icon: "✅", repeatDays: null },
     { id: "demo2", text: "Prepare for tomorrow's meeting and note down the key points", icon: "🎯", repeatDays: null },
@@ -616,9 +875,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---- Reminders: one-off timed notification per task (task.remindAt = {h,m,s}) ----
   const rem = {};
   // Notify + Recur: a 10px loop with a 10px red outline bell filled with the card colour in front, in one 14px x 14px icon (like the two masks emoji).
-  function comboIconSvg() {
-    const bell = BELL_SVG.replace(/width="11" height="11"/, 'width="11.46" height="11.46"').replace('fill="none"', 'fill="#1F1F1F"').replace(/currentColor/g, "#E5484D").replace('stroke-width="2"', 'stroke-width="2.6"').replace("<svg ", '<svg class="cb-bell" ');
-    const loop = LOOP_ICON_SVG.replace('width="15" height="15"', 'width="10.71" height="10.71"').replace("<svg ", '<svg class="cb-loop" ');
+  function comboIconSvg(red) {
+    const bellColor = red ? "#E5484D" : "#4CC97F";   // bell follows the loop: once = red, endless = green
+    const bell = BELL_SVG.replace(/width="11" height="11"/, 'width="11.46" height="11.46"').replace('fill="none"', 'fill="#1F1F1F"').replace(/currentColor/g, bellColor).replace('stroke-width="2"', 'stroke-width="2.6"').replace("<svg ", '<svg class="cb-bell" ');
+    const loop = (red ? LOOP_ICON_RED : LOOP_ICON_SVG).replace('width="15" height="15"', 'width="10.71" height="10.71"').replace("<svg ", '<svg class="cb-loop" ');
     return loop + bell;
   }
   function refreshComboBadge(rowEl) {
@@ -627,8 +887,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let c = rowEl.querySelector(".combo-badge");
     rowEl.classList.toggle("row--combo", both);
     if (both && !c) {
-      c = document.createElement("div"); c.className = "combo-badge"; c.innerHTML = comboIconSvg(); rowEl.appendChild(c);
+      c = document.createElement("div"); c.className = "combo-badge"; rowEl.appendChild(c);
     } else if (!both && c) c.remove();
+    if (both && c) c.innerHTML = comboIconSvg(rowEl.classList.contains("once-loop"));
   }
   const BELL_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
   const pad2 = (n) => String(n).padStart(2, "0");
@@ -692,7 +953,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!tpl || !tpl.remindAt || !tpl.repeatDays) return;
       for (let d = 1; d <= REM_AHEAD_DAYS; d++) {
         const ds = addDaysToDateStr(today, d);
-        if (!tpl.repeatDays[weekdayForDateStr(ds)]) continue;
+        if (!tplDue(tpl, ds, weekdayForDateStr(ds))) continue;
         const [y, m, dd] = ds.split("-").map(Number);
         const at = new Date(y, m - 1, dd, tpl.remindAt.h, tpl.remindAt.m, tpl.remindAt.s, 0).getTime();
         wanted[loopId + "|" + ds] = { at, sig: at + "|" + tpl.icon + tpl.text, title: (tpl.icon ? tpl.icon + " " : "") + tpl.text };
@@ -725,7 +986,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const r = task.remindAt;
     if (r) {
       if (!b) { b = document.createElement("div"); b.className = "bell-badge"; rowEl.appendChild(b); }
-      b.innerHTML = BELL_SVG.replace(/width="11" height="11"/, 'width="15.96" height="15.96"').replace(/currentColor/g, "#E5484D").replace('stroke-width="2"', 'stroke-width="2.3"');
+      b.innerHTML = BELL_SVG.replace(/width="11" height="11"/, 'width="15.96" height="15.96"').replace(/currentColor/g, (hasActiveLoop(task) && task.loopMode !== "once") ? "#4CC97F" : "#E5484D").replace('stroke-width="2"', 'stroke-width="2.3"');
     } else if (b) b.remove();
     refreshComboBadge(rowEl);
   }
@@ -745,10 +1006,16 @@ document.addEventListener("DOMContentLoaded", () => {
   let uid = 1;
   let activeGestureId = null;
   let historyPanelOpen = false;
+  let dashboardOpen = false;
   let tapTimer = null;
   let tapTaskId = null;
   let openPickerTaskId = null;
   let openPickerEl = null;
+  let editingTaskId = null;   // the task whose text / emoji is being edited in the chat box (null = normal adding)
+  let editDraft = null;       // what was in the chat box before editing started, put back afterwards
+  let subSlotEl = null;       // the open subtask slot (under its task card), null = closed
+  let subTaskId = null;       // the task that slot belongs to
+  let subDraft = null;        // what was in the chat box before subtask adding started, put back afterwards
 
   const HISTORY_KEY = "todo-history-v1";
 
@@ -847,7 +1114,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function pruneArchive() {
     const cutoff = addDaysToDateStr(todayStr(), -ARCHIVE_RETENTION_DAYS);
     Object.keys(historyArchive).forEach((dateStr) => {
-      if (dateStr < cutoff) delete historyArchive[dateStr];
+      if (dateStr < cutoff) { foldDayIntoStats(dateStr, historyArchive[dateStr]); delete historyArchive[dateStr]; }
     });
   }
 
@@ -855,6 +1122,37 @@ document.addEventListener("DOMContentLoaded", () => {
   // current day and gets wiped on rollover), this persists so past days
   // remain browsable, capped to the last ARCHIVE_RETENTION_DAYS days.
   let historyArchive = loadArchive();
+
+  // Long-term totals for the Dashboard: when a day leaves the 7-day history above, its counts are kept here
+  // (dateStr -> { t: ticks, c: crosses, e: { emoji: [ticks, crosses] } }) - a few bytes per day.
+  const STATS_KEY = "todo-stats-v1";
+  function loadStats() {
+    try {
+      const saved = localStorage.getItem(STATS_KEY);
+      if (saved) { const parsed = JSON.parse(saved); if (parsed && typeof parsed === "object") return parsed; }
+    } catch (e) {}
+    return {};
+  }
+  let statsLong = loadStats();
+  function countEntries(entries) {
+    const day = { t: 0, c: 0, e: {}, k: {} };
+    (entries || []).forEach((en) => {
+      if (en.silent || (en.action !== "tick" && en.action !== "cross")) return;
+      const k = en.action === "tick" ? 0 : 1;
+      if (k) day.c++; else day.t++;
+      if (en.icon) { const a = day.e[en.icon] || (day.e[en.icon] = [0, 0]); a[k]++; }
+      // per specific task: a looping task by its loop id, any other task by its text; the emoji is only a symbol kept alongside
+      if (en.rk || en.loopId) { const key = "L" + (en.rk || en.loopId); const o = day.k[key] || (day.k[key] = [0, 0, "", ""]); o[k]++; if (en.icon) o[2] = en.icon; if (en.text) o[3] = en.text; }
+    });
+    return day;
+  }
+  function foldDayIntoStats(dateStr, entries) {
+    if (statsLong[dateStr]) return;
+    const day = countEntries(entries);
+    if (!day.t && !day.c) return;
+    statsLong[dateStr] = day;
+    try { localStorage.setItem(STATS_KEY, JSON.stringify(statsLong)); } catch (e) {}
+  }
 
   // The earliest day the History panel is allowed to page back to - either
   // the day this install first ran, or the archive prune cutoff, whichever
@@ -907,13 +1205,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // changes on a looping task still in the list) before we roll over.
     tasks.forEach((t) => {
       if (t.loopId && loopTemplates[t.loopId]) {
-        loopTemplates[t.loopId] = { text: t.text, icon: t.icon, repeatDays: t.repeatDays.slice(), remindAt: t.remindAt ? { ...t.remindAt } : null };
+        loopTemplates[t.loopId] = tplFromTask(t);
       }
       history.entries.push({
         id: t.id + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
-        text: t.text, icon: t.icon, action: "cross",
-        repeatDays: t.repeatDays || null, loopId: t.loopId || null, silent: false,
+        text: t.text, icon: t.icon, action: dayResult(t, history.date),   // a task with subtasks: quota met = auto tick, otherwise cross
+        repeatDays: t.repeatDays || null, loopId: t.loopId || null, rk: t.loopId || t.rankLoop || null, silent: false,
       });
+    });
+    saveLoopTemplates();
+    // a red (once) loop ends after its last date; its final tick or cross was already recorded for the rankings
+    Object.keys(loopTemplates).forEach((id) => {
+      const tp = loopTemplates[id];
+      if (tp && tp.loopMode === "once" && tp.onceDates && tp.onceDates.length && tp.onceDates[tp.onceDates.length - 1] < targetDateStr) delete loopTemplates[id];
     });
     saveLoopTemplates();
 
@@ -938,8 +1242,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (entry.silent) return;
       if (entry.loopId && loopTemplates[entry.loopId] && !handledLoopIds.has(entry.loopId)) {
         const tpl = loopTemplates[entry.loopId];
-        if (tpl.repeatDays && tpl.repeatDays[targetIdx]) {
-          regenerated.push({ id: "t" + (uid++), text: tpl.text, icon: tpl.icon, repeatDays: tpl.repeatDays.slice(), loopId: entry.loopId, remindAt: tpl.remindAt ? { ...tpl.remindAt } : null });
+        if (tplDue(tpl, targetDateStr, targetIdx)) {
+          regenerated.push(taskFromTpl(tpl, entry.loopId));
           handledLoopIds.add(entry.loopId);
         }
       }
@@ -952,8 +1256,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!entry.silent) return;
       if (entry.loopId && loopTemplates[entry.loopId] && !handledLoopIds.has(entry.loopId)) {
         const tpl = loopTemplates[entry.loopId];
-        if (tpl.repeatDays && tpl.repeatDays[targetIdx]) {
-          regenerated.push({ id: "t" + (uid++), text: tpl.text, icon: tpl.icon, repeatDays: tpl.repeatDays.slice(), loopId: entry.loopId, remindAt: tpl.remindAt ? { ...tpl.remindAt } : null });
+        if (tplDue(tpl, targetDateStr, targetIdx)) {
+          regenerated.push(taskFromTpl(tpl, entry.loopId));
           handledLoopIds.add(entry.loopId);
         }
       }
@@ -965,8 +1269,8 @@ document.addEventListener("DOMContentLoaded", () => {
     Object.keys(loopTemplates).forEach((loopId) => {
       if (handledLoopIds.has(loopId)) return;
       const tpl = loopTemplates[loopId];
-      if (tpl.repeatDays && tpl.repeatDays[targetIdx]) {
-        regenerated.push({ id: "t" + (uid++), text: tpl.text, icon: tpl.icon, repeatDays: tpl.repeatDays.slice(), loopId, remindAt: tpl.remindAt ? { ...tpl.remindAt } : null });
+      if (tplDue(tpl, targetDateStr, targetIdx)) {
+        regenerated.push(taskFromTpl(tpl, loopId));
         handledLoopIds.add(loopId);
       }
     });
@@ -1010,7 +1314,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ensureHistoryFresh();
     const entry = {
       id: task.id + "-" + Date.now(), ts: Date.now(), text: task.text, icon: task.icon, action,
-      repeatDays: task.repeatDays || null, loopId: task.loopId || null, silent: !!silent,
+      repeatDays: task.repeatDays || null, loopId: task.loopId || null, rk: task.loopId || task.rankLoop || null, silent: !!silent,
     };
     history.entries.push(entry);
     saveHistory();
@@ -1669,6 +1973,199 @@ document.addEventListener("DOMContentLoaded", () => {
     historyPanelOpen = false;
   }
 
+  // --- Dashboard: the last 7 days (today + the 6 days History keeps) of ticks and crosses ---
+  const dashboardBtn = document.getElementById("dashboard-btn");
+  const dashboardOverlay = document.getElementById("dashboard-overlay");
+  const dashboardBody = document.getElementById("dashboard-body");
+  function renderDashboard() {
+    const today = todayStr();
+    const fmt = (v) => String(+v.toFixed(2)), fmt1 = (v) => String(+v.toFixed(1));
+    const daysBetween = (a, b) => Math.round((parseDateStr(b) - parseDateStr(a)) / 86400000);
+    const ic = (kind, n, plain) => '<svg width="' + n + '" height="' + n + '" viewBox="0 0 24 24" fill="none" stroke="' + (plain ? "#F4F3EF" : kind === "tick" ? "#4CC97F" : "#E5484D") + '" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">' + (kind === "tick" ? '<path d="M4 12.5l5 5L20 6.5"/>' : '<path d="M6 6l12 12M18 6L6 18"/>') + '</svg>';
+
+    // every tracked day: the long-term counts plus the live 7-day history
+    const dayMap = {};
+    Object.keys(statsLong).forEach((d) => { dayMap[d] = statsLong[d]; });
+    const last7 = [];
+    for (let i = 6; i >= 0; i--) {
+      const ds = addDaysToDateStr(today, -i);
+      const day = countEntries(getEntriesForDate(ds));
+      dayMap[ds] = day;
+      last7.push({ day, label: parseDateStr(ds).toLocaleDateString([], { weekday: "short" }), isToday: i === 0 });
+    }
+    // the bar chart week is fixed S M T W T F S (Sunday to Saturday) with the date; a day not reached yet stays empty
+    const dow = parseDateStr(today).getDay();
+    const weekDays = [];
+    for (let k = 0; k < 7; k++) {
+      const ds = addDaysToDateStr(today, k - dow);
+      weekDays.push({ day: k <= dow ? (dayMap[ds] || { t: 0, c: 0 }) : { t: 0, c: 0 }, label: "SMTWTFS"[k] + " " + parseDateStr(ds).getDate(), isToday: k === dow });
+    }
+    const dates = Object.keys(dayMap).filter((d) => dayMap[d].t + dayMap[d].c > 0).sort();
+    let ticks = 0, crosses = 0;
+    const tk = {};
+    dates.forEach((d) => {
+      const x = dayMap[d]; ticks += x.t; crosses += x.c;
+      const src = x.k || {};
+      Object.keys(src).forEach((key) => { if (key[0] !== "L") return; const rk = key; const a = tk[rk] || (tk[rk] = [0, 0, "", ""]); a[0] += src[key][0]; a[1] += src[key][1]; if (src[key][2]) a[2] = src[key][2]; if (src[key][3]) a[3] = src[key][3]; });
+    });
+    // the emoji shown for a task is its current one, so changing a task's emoji changes it here too
+    Object.keys(tk).forEach((key) => {
+      let live = "";
+      const lt = tasks.find((x) => (x.loopId || x.rankLoop) && "L" + (x.loopId || x.rankLoop) === key);
+      if (lt) live = lt.icon;
+      else if (loopTemplates[key.slice(1)]) live = loopTemplates[key.slice(1)].icon;
+      if (live) tk[key][2] = live;
+    });
+    const sections = [];
+
+    {
+      const first = dates[0] || today, span = daysBetween(first, today) + 1;
+
+      // 1) Burn down: ticked vs crossed (counts)
+      const pct = ticks + crosses ? (ticks / (ticks + crosses)) * 100 : 0;
+      // Progress donut (today): ticked = green, crossed = red, still on the list = no colour; counts on the sides, percent in the centre
+      const tdy = last7[6].day, pend = tasks.length, tot = tdy.t + tdy.c + pend, CIRC = 2 * Math.PI * 30;
+      const seg = (n, color, off) => n > 0 ? '<circle cx="40" cy="40" r="30" fill="none" stroke="' + color + '" stroke-width="12" stroke-dasharray="' + (n / tot * CIRC).toFixed(2) + ' ' + CIRC.toFixed(2) + '" stroke-dashoffset="' + (-off / tot * CIRC).toFixed(2) + '" transform="rotate(-90 40 40)"/>' : '';
+      const lab = (n, from) => { if (!(n > 0)) return ''; const a = (-90 + (from + n / 2) / tot * 360) * Math.PI / 180; return '<text x="' + (40 + 44 * Math.cos(a)).toFixed(1) + '" y="' + (40 + 44 * Math.sin(a)).toFixed(1) + '" text-anchor="middle" dominant-baseline="central" fill="#A0A0A0" font-size="12.9" font-weight="700">' + n + '</text>'; };
+      const progressCard = '<div class="dash-card dash-right"><div class="dash-title">To Do</div><div class="dash-donut">' +
+        '<svg viewBox="-10 -10 100 100"><circle cx="40" cy="40" r="30" fill="none" stroke="rgba(244,243,239,0.12)" stroke-width="12"/>' + seg(tdy.t, "#4CC97F", 0) + seg(tdy.c, "#E5484D", tdy.t) +
+        lab(tdy.t, 0) + lab(tdy.c, tdy.t) + '<text x="40" y="40" text-anchor="middle" dominant-baseline="central" fill="#F4F3EF" font-size="22.6" font-weight="700">' + pend + '</text></svg></div></div>';
+      sections.push('<div class="dash-top"><div class="dash-card dash-left"><div class="dash-title" style="display:flex;align-items:center;gap:6px">' + ic("tick", 16) + '<span>Vs</span>' + ic("cross", 16) + '</div><div class="dash-burn"><b style="color:#fff">' + ticks + '</b><div class="dash-burn-bar"><i style="width:' + pct + '%"></i></div><b style="color:#fff">' + crosses + '</b></div></div>' + progressCard + '</div>');
+
+      // 2) Last 7 days: ticked vs crossed
+      const max = Math.max(1, ...weekDays.map((d) => Math.max(d.day.t, d.day.c)));
+      const bar = (kind, n) => '<div class="dash-bar ' + kind + '" style="height:' + Math.round((n / max) * 94) + 'px"><span>' + n + '</span></div>';
+      sections.push('<div class="dash-card"><div class="dash-title" style="display:flex;align-items:center;gap:6px"><span>Daily</span>' + ic("tick", 16) + '<span>&amp;</span>' + ic("cross", 16) + '</div><div class="dash-chart">' +
+        weekDays.map((d) => '<div class="dash-day' + (d.isToday ? ' today' : '') + '"><div class="dash-bars">' + bar("tick", d.day.t) + bar("cross", d.day.c) + '</div><div class="dash-label' + (d.isToday ? ' today' : '') + '">' + d.label + '</div></div>').join("") +
+        '</div></div>');
+
+      // 3) Cards
+      const mini = (value, name) => '<div class="dash-mini"><b>' + value + '</b><span>' + name + '</span></div>';
+      sections.push('<div class="dash-grid">' +
+        mini((ticks + crosses ? Math.round((ticks / (ticks + crosses)) * 100) : 0) + "%", ic("tick", 12) + " Rate") +
+        mini(crosses ? fmt(ticks / crosses) : ticks ? "\u221e" : "0", ic("tick", 12) + " / " + ic("cross", 12)) +
+        mini(Math.round(ticks / span), ic("tick", 12) + " / Day") +
+        mini(Math.round(ticks / Math.max(1, span / 7)), ic("tick", 12) + " / Week") + '</div>');
+
+      // 4) Week by week line chart: W1, W2 ... Wn - endless. 7 weeks are in view; the newest week is always at the right edge and older weeks wait on the left (scroll left)
+      const wk = {};
+      dates.forEach((d) => { const w = Math.floor(daysBetween(first, d) / 7) + 1; const o = wk[w] || (wk[w] = [0, 0]); o[0] += dayMap[d].t; o[1] += dayMap[d].c; });
+      const lastW = Math.floor((span - 1) / 7) + 1, startW = 1;
+      const weeks = [];
+      for (let w = startW; w <= lastW; w++) weeks.push({ w, t: (wk[w] || [0, 0])[0], c: (wk[w] || [0, 0])[1] });
+      const W = Math.max(240, Math.round((document.getElementById("dashboard-body").clientWidth || (document.documentElement.clientWidth - 66)) - 30)), H = 132, padL = 14, padR = 14, top = 20, bottom = 22, plotH = H - top - bottom;
+      const wmax = Math.max(1, ...weeks.map((x) => Math.max(x.t, x.c)));
+      const step = (W - padL - padR) / 6, future = []; for (let w = lastW + 1; weeks.length + future.length < 7; w++) future.push(w);   // up to 7 slots: the weeks still to come are shown in grey
+      const TW = Math.max(W, Math.round(padL + (weeks.length + future.length - 1) * step + padR));   // 7 weeks fill the card; every extra week adds one step to the scrollable width
+      const X = (k) => padL + k * step;
+      const Y = (v) => top + plotH * (1 - v / wmax);
+      const line = (key, color) => (weeks.length > 1 ? '<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="' + weeks.map((x, k) => X(k).toFixed(1) + "," + Y(x[key]).toFixed(1)).join(" ") + '"/>' : '') +
+        weeks.map((x, k) => '<circle cx="' + X(k).toFixed(1) + '" cy="' + Y(x[key]).toFixed(1) + '" r="3" fill="' + color + '"/>').join("");
+      const labels = weeks.map((x, k) => {
+        const gAbove = x.t >= x.c, cc = x.w === lastW ? "#F4F3EF" : "#8C8C8C";
+        return (x.t > 0 ? '<text x="' + X(k).toFixed(1) + '" y="' + (Y(x.t) + (gAbove ? -7 : 14)).toFixed(1) + '" fill="' + cc + '" font-size="10" font-weight="600" text-anchor="middle">' + x.t + '</text>' : '') +   // a 0 is not written: it would sit on top of the W labels
+          (x.c > 0 ? '<text x="' + X(k).toFixed(1) + '" y="' + (Y(x.c) + (gAbove ? 14 : -7)).toFixed(1) + '" fill="' + cc + '" font-size="10" font-weight="600" text-anchor="middle">' + x.c + '</text>' : '') +
+          '<text x="' + X(k).toFixed(1) + '" y="' + (H - 6) + '" fill="' + cc + '" font-size="12" font-weight="600" text-anchor="middle">W' + x.w + '</text>';
+      }).join("") + future.map((w, k) => '<text x="' + X(weeks.length + k).toFixed(1) + '" y="' + (H - 6) + '" fill="#5A5A5A" font-size="12" font-weight="600" text-anchor="middle">W' + w + '</text>').join("");
+      sections.push('<div class="dash-card"><div class="dash-title" style="display:flex;align-items:center;gap:6px"><span>Weekly</span>' + ic("tick", 16) + '<span>&amp;</span>' + ic("cross", 16) + '</div><div class="dash-wk-scroll"><svg viewBox="0 0 ' + TW + ' ' + H + '" width="' + TW + '" height="' + H + '" style="display:block;flex:none"><line x1="' + padL + '" x2="' + (TW - padL) + '" y1="' + Y(0) + '" y2="' + Y(0) + '" stroke="rgba(244,243,239,0.18)" stroke-width="1"/>' + line("c", "#E5484D") + line("t", "#4CC97F") + labels + '</svg></div></div>');
+
+      // 5) Most completed / most crossed emojis: two tables side by side (rank, emoji, count, percentage)
+      const emoRows = (idx) => Object.keys(tk).map((key) => ({ k: tk[key][2], n: tk[key][idx], o: tk[key][1 - idx], s: (tk[key][idx] + 2) / (tk[key][0] + tk[key][1] + 4), p: tk[key][idx] / (tk[key][0] + tk[key][1]) })).filter((r) => r.k && r.n > 0 && (r.n > r.o || (r.n === r.o && idx === 0))).sort((a, b) => b.s - a.s || b.n - a.n).slice(0, 30);
+      const emoCard = (iconName, idx) => {
+        const rows = emoRows(idx);
+        while (rows.length < 3) rows.push(null);
+        return '<div class="dash-card"><div class="dash-title" style="display:flex;align-items:center;gap:4px">Mostly ' + ic(iconName, 14) + ' Task</div>' + (rows.length
+          ? '<div class="dash-rt-wrap"><table class="dash-rt"><thead><tr><th>#</th><th>Task</th><th>Count</th><th>%</th></tr></thead><tbody>' + rows.map((r, i) => !r ? '<tr><td>' + (i + 1) + '</td><td class="ph">\u2013</td><td class="ph">\u2013</td><td class="ph">\u2013</td></tr>' : '<tr><td>' + (i + 1) + '</td><td class="e">' + r.k + '</td><td>' + r.n + '</td><td>' + Math.round(r.p * 100) + '%</td></tr>').join("") + '</tbody></table></div>'
+          : '<div class="dash-none">None yet.</div>') + '</div>';
+      };
+      sections.push('<div class="dash-pair">' + emoCard("tick", 0) + emoCard("cross", 1) + '</div>');
+    }
+
+    // 6) Notify and Recur tasks by weekday (what is set up now)
+    const info = {};
+    Object.keys(loopTemplates).forEach((id) => { const t = loopTemplates[id]; info[id] = { days: t.loopMode === "once" ? onceDaysOf(t.onceDates) || [] : t.repeatDays, notify: !!t.remindAt, once: t.loopMode === "once" }; });
+    let oneOffNotify = 0;
+    tasks.forEach((t) => {
+      if (t.loopId) { syncOnce(t); info[t.loopId] = { days: t.repeatDays || (info[t.loopId] && info[t.loopId].days), notify: !!t.remindAt, once: t.loopMode === "once" }; }
+      else if (t.remindAt) oneOffNotify++;
+    });
+    const letters = ["S", "M", "T", "W", "T", "F", "S"], todayDow = parseDateStr(today).getDay();
+    const cell = (n, d) => '<td class="day' + (d === todayDow ? ' today' : n ? '' : ' zero') + '">' + n + '</td>';
+    // two cards: red = loop once (a bell on its own is red too), green = loop endless
+    const nrCard = (red) => {
+      const recurCnt = [0, 0, 0, 0, 0, 0, 0], notifyCnt = [0, 0, 0, 0, 0, 0, 0];
+      let recurTotal = 0, notifyTotal = red ? oneOffNotify : 0;
+      if (red) notifyCnt[todayDow] += oneOffNotify;
+      Object.keys(info).forEach((id) => {
+        const days = info[id].days;
+        if (!days || !days.some(Boolean) || !!info[id].once !== red) return;
+        days.forEach((on, d) => { if (on) { recurCnt[d]++; recurTotal++; if (info[id].notify) { notifyCnt[d]++; notifyTotal++; } } });
+      });
+      const col = red ? "#E5484D" : "#4CC97F";
+      return '<div class="dash-card"><div class="dash-title" style="display:flex;align-items:center;gap:6px">' + BELL_SVG.replace(/width="11" height="11"/, 'width="15" height="15"').replace(/currentColor/g, col) + '<span>&amp;</span>' + (red ? LOOP_ICON_RED : LOOP_ICON_SVG).replace('width="15" height="15"', 'width="14" height="14"') + '<span>Count</span></div><table class="dash-table"><thead><tr><th></th>' +
+        letters.map((l, d) => '<th' + (d === todayDow ? ' class="today"' : '') + '>' + l + '</th>').join("") + '<th>Total</th></tr></thead><tbody>' +
+        '<tr><th class="rowh">Notify</th>' + notifyCnt.map(cell).join("") + '<td class="total">' + notifyTotal + '</td></tr>' +
+        '<tr><th class="rowh">Recur</th>' + recurCnt.map(cell).join("") + '<td class="total">' + recurTotal + '</td></tr>' +
+        '</tbody></table></div>';
+    };
+    sections.push(nrCard(true));
+    sections.push(nrCard(false));
+
+    // 0) Task (subtask icon) Progress: one blue donut per task on the main screen, in the same order as the task cards.
+    //    Centre = done/target for today with a tick (blue when every subtask of the task is done, white otherwise); the task's emoji sits under the donut
+    {
+      const C = 2 * Math.PI * 30;
+      const items = tasks.filter((t) => t.subtasks && t.subtasks.length && t.icon).map((t) => {   // only tasks that have subtasks and an emoji
+        const has = !!(t.subtasks && t.subtasks.length);
+        const st = has ? subState(t) : null;
+        const n = has ? st.doneToday : 0, d = has ? st.quota : 1;
+        const frac = has ? t.subtasks.filter((x) => x.done).length / t.subtasks.length : 0;   // the ring always shows the same done / total as the number
+        const allDone = has && !t.subtasks.some((x) => !x.done);
+        // under the donut it mirrors the lock on the card: done/total subtasks (lock + number) / white tick (quota met, subtasks left) / blue tick (all subtasks done); nothing for a task without subtasks
+        const label = t.subtasks.filter((x) => x.done).length + "/" + t.subtasks.length;   // done / total subtasks, e.g. 5/8, always shown under the donut
+        // the tick goes back under the donut, in front of the number, once today's quota is met: blue when every subtask is done, white otherwise
+        const tick = st && st.met ? '<svg viewBox="0 0 24 24" fill="none" stroke="' + (allDone ? "#4C8DF6" : "#F4F3EF") + '" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>' : "";
+        return '<div class="dash-tt"><div class="dash-tt-ring"><svg viewBox="-10 -10 100 100"><circle cx="40" cy="40" r="30" fill="none" stroke="rgba(244,243,239,0.12)" stroke-width="12"/>' +
+          (frac > 0 ? '<circle cx="40" cy="40" r="30" fill="none" stroke="#4C8DF6" stroke-width="12" stroke-dasharray="' + (frac * C).toFixed(2) + ' ' + C.toFixed(2) + '" transform="rotate(-90 40 40)"/>' : '') +
+          '</svg><div class="dash-tt-mid">' + (t.icon || "") + '</div></div><div class="dash-tt-cnt">' + tick + '<span>' + label + '</span></div></div>';
+      });
+      // empty slots up to 5: a dim •
+      for (let k = items.length; k < 5; k++) {
+        items.push('<div class="dash-tt dash-tt-empty"><div class="dash-tt-ring"><div class="dash-tt-mid"><i class="dash-tt-dot"></i></div></div><div class="dash-tt-cnt"></div></div>');
+      }
+      const ttCard = ('<div class="dash-card" style="padding:14px 10px 16px"><div class="dash-title" style="padding-left:4px;margin-bottom:14px;display:flex;align-items:center;gap:6px"><span>Task</span>' + SUBS_BTN_SVG + '<span>Progress</span></div>' +
+        '<div class="dash-tt-row">' + items.join("") + '</div>' + '</div>');
+      // placed right after the "Daily ✓ & ×" card
+      const di = sections.findIndex((h) => h.indexOf("<span>Daily</span>") >= 0);
+      sections.splice(di >= 0 ? di + 1 : sections.length, 0, ttCard);
+    }
+
+    dashboardBody.innerHTML = sections.join("");
+    const wkScroll = dashboardBody.querySelector(".dash-wk-scroll"); if (wkScroll) wkScroll.scrollLeft = wkScroll.scrollWidth;   // start at the newest week
+  }
+  function openDashboard() {
+    inputEl.blur();
+    emojiPanel.classList.remove("show");
+    if (instructionsOverlay.classList.contains("show") && !instructionsFirstTime) closeInstructions();
+    ensureHistoryFresh();
+    renderDashboard();
+    dashboardOverlay.classList.add("show");
+    dashboardOpen = true;
+  }
+  function closeDashboard() {
+    dashboardOverlay.classList.remove("show");
+    dashboardOpen = false;
+  }
+  dashboardBtn.addEventListener("click", () => openDashboard());
+  let dashStartX = 0, dashStartY = 0, dashStartTime = 0, dashTracking = false;
+  dashboardOverlay.addEventListener("pointerdown", (e) => { dashStartX = e.clientX; dashStartY = e.clientY; dashStartTime = Date.now(); dashTracking = true; });
+  dashboardOverlay.addEventListener("pointerup", (e) => {
+    if (!dashTracking) return;
+    dashTracking = false;
+    if (Math.hypot(e.clientX - dashStartX, e.clientY - dashStartY) < 12 && Date.now() - dashStartTime < 420) closeDashboard();
+  });
+  dashboardOverlay.addEventListener("pointercancel", () => { dashTracking = false; });
+
   // --- Instructions ---
   const instructionsOverlay = document.getElementById("instructions-overlay");
   const instructionsListEl = document.getElementById("instructions-list");
@@ -1701,10 +2198,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!(m.fontBoundingBoxAscent > 0)) return;
       const baseline = r.top + (r.height - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
       const capCentre = baseline - (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
+      // The icons are centred on the "o" of Today (its real ink height in the real title font), the same centre line on any phone
+      headerCtx.font = cs.fontStyle + " " + cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+      const om = headerCtx.measureText("o");
+      const dateCentre = baseline - (om.actualBoundingBoxAscent - om.actualBoundingBoxDescent) / 2;
       document.querySelectorAll("header .hbtn").forEach((b) => {
         b.style.top = "0px";
         const br = b.getBoundingClientRect();
-        b.style.top = (Math.round((capCentre + 2 - (br.top + br.bottom) / 2) * 2) / 2) + "px";
+        b.style.top = (Math.round((dateCentre - (br.top + br.bottom) / 2) * 2) / 2) + "px";
       });
     } catch (e) {}
   }
@@ -1725,23 +2226,83 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!(m.fontBoundingBoxAscent > 0)) return;
       const baseline = r.top + (r.height - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
       const inkTop = baseline - m.actualBoundingBoxAscent;
-      const want = appEl.getBoundingClientRect().top + (parseFloat(getComputedStyle(appEl).paddingTop) || 0) + 14;
+      const want = appEl.getBoundingClientRect().top + (parseFloat(getComputedStyle(appEl).paddingTop) || 0) + 18;
       const mt = Math.max(0, 14 - (inkTop - want)) + "px";
       hdr.style.marginTop = mt;
+      // The date and time stand on the same baseline as "Today": the space between that baseline and the first card is
+      // exactly 18px, measured from the real font (the header's bottom margin is set to make up the difference).
+      const r2 = appTitleEl.getBoundingClientRect();
+      const baseline2 = r2.top + (r2.height - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
+      const mbNum = Math.round((18 - (hdr.getBoundingClientRect().bottom - baseline2)) * 2) / 2;
+      const mb = Math.max(0, mbNum) + "px";
+      hdr.style.marginBottom = mb;
       // The header moved, so the list is a different height now: re-fit the task cards so the last visible card ends
       // exactly 8px above the chat box (the cards absorb the extra space).
-      if (lastTitleMargin !== mt) {
-        lastTitleMargin = mt;
+      if (lastTitleMargin !== mt + "/" + mb) {
+        lastTitleMargin = mt + "/" + mb;
         if (!isTransient()) { rowFitDone = false; snapListHeight(); }
       }
     } catch (e) {}
   }
+  // The four boxes (Instruction, Customize, History, Dashboard): the top of the title letters sits exactly 18px below the
+  // inside of the box's top border, and the bottom of the letters exactly 16px above the first card. The empty space
+  // above and below the letters is measured from the real font, then taken off the padding / margin.
+  let panelCtx = null;
+  function fitPanelTitleTops() {
+    try {
+      if (!panelCtx) panelCtx = document.createElement("canvas").getContext("2d");
+      [["instructions-panel", ".instructions-head h2"], ["emoji-customize-panel", ".customize-head h2"], ["history-panel", "#history-title"], ["dashboard-panel", ".dash-head h2"]].forEach((pair) => {
+        const p = document.getElementById(pair[0]), h = p && p.querySelector(pair[1]);
+        if (!h) return;
+        const cs = getComputedStyle(h);
+        panelCtx.font = cs.fontStyle + " " + cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+        const m = panelCtx.measureText("H");
+        if (!(m.fontBoundingBoxAscent > 0)) return;
+        const fs = parseFloat(cs.fontSize) || 22;   // line-height is 1, so the line box is as tall as the font size
+        const inkTop = (fs - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent - m.actualBoundingBoxAscent;
+        p.style.paddingTop = Math.max(0, 18 - inkTop) + "px";
+        // and the bottom of the title letters (the baseline) sits exactly 18px above the top of the first card
+        const baselineFromTop = (fs - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
+        h.parentElement.style.marginBottom = Math.max(0, 18 - (fs - baselineFromTop)) + "px";
+        h.parentElement.style.setProperty("--base-off", (fs - baselineFromTop) + "px");   // how far the baseline is above the bottom of the title row (used by the History line)
+        // History: the two arrows are centred on the middle of the "a" in Saturday (the height of an "a", the same for every day name), real fonts
+        if (pair[0] === "history-panel") {
+          const om = panelCtx.measureText("a");
+          const oCentre = baselineFromTop - (om.actualBoundingBoxAscent - om.actualBoundingBoxDescent) / 2;   // from the top of the 22px title row
+          const headH = parseFloat(getComputedStyle(h.parentElement).height) || 22;
+          h.parentElement.querySelectorAll(".history-arrow").forEach((a) => {
+            const acs = getComputedStyle(a), afs = parseFloat(acs.fontSize) || 30;
+            panelCtx.font = acs.fontStyle + " " + acs.fontWeight + " " + acs.fontSize + " " + acs.fontFamily;
+            const am = panelCtx.measureText(a.textContent || "\u2039");
+            if (!(am.fontBoundingBoxAscent > 0)) return;
+            const aBase = (afs - (am.fontBoundingBoxAscent + am.fontBoundingBoxDescent)) / 2 + am.fontBoundingBoxAscent;   // baseline inside the glyph's line box (line-height 1)
+            const inkCentre = headH / 2 - afs / 2 + aBase - (am.actualBoundingBoxAscent - am.actualBoundingBoxDescent) / 2;
+            a.style.position = "relative";
+            a.style.top = (Math.round((oCentre - inkCentre) * 2) / 2) + "px";
+          });
+          panelCtx.font = cs.fontStyle + " " + cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+        }
+      });
+    } catch (e) {}
+  }
   function placePanels() {
     fixTitleTop();
+    fitPanelTitleTops();
     try {
       const r = appTitleEl.getBoundingClientRect();
       // The boxes start exactly 14px below "Today" and end exactly 8px above the chat box (exact, not rounded).
-      if (r.height > 0) document.documentElement.style.setProperty("--panel-top", (r.bottom + 14) + "px");
+      // The boxes start exactly 16px below the bottom of the date letters (same baseline as "Today", the date is nudged 1px down) and end exactly 8px above the chat box.
+      if (r.height > 0) {
+        let panelTop = r.bottom + 14;
+        try {
+          const pm = headerCtx && headerCtx.measureText("Today");
+          if (pm && pm.fontBoundingBoxAscent > 0) {
+            const titleBaseline = r.top + (r.height - (pm.fontBoundingBoxAscent + pm.fontBoundingBoxDescent)) / 2 + pm.fontBoundingBoxAscent;
+            panelTop = titleBaseline + 1 + 16;
+          }
+        } catch (e) {}
+        document.documentElement.style.setProperty("--panel-top", panelTop + "px");
+      }
       const bar = document.querySelector(".input-bar").getBoundingClientRect();
       if (bar.height > 0 && !isTransient()) document.documentElement.style.setProperty("--panel-bottom", (window.innerHeight - bar.top + 8) + "px");
     } catch (e) {}
@@ -1774,18 +2335,18 @@ document.addEventListener("DOMContentLoaded", () => {
       emoji: "✅",
       heading: "Completing a Task",
       steps: ["Swipe a task to the right to mark it done", "It leaves today's list and gets logged in your History as ticked"],
-      note: "A tick only ever happens when you swipe it yourself - there's no automatic way for a task to get ticked."
+      note: "Besides your own swipe, a task with subtasks is ticked automatically at midnight if its target for the day was met. A locked task can't be swiped at all - see Locked Tasks below."
     },
     {
       emoji: "❌",
       heading: "Skipping a Task",
       steps: ["Swipe a task to the left to mark it crossed", "It leaves today's list and gets logged in your History as crossed"],
-      note: "If a task isn't resolved by midnight, it gets automatically crossed for you too. It'll look identical to one you crossed on purpose - there's currently no way to tell the two apart."
+      note: "If a task isn't resolved by midnight, it gets automatically crossed for you too. It'll look identical to one you crossed on purpose - there's currently no way to tell the two apart. A locked task can't be swiped."
     },
     {
       emoji: "🗑️",
       heading: "Deleting a Task",
-      steps: ["Tap a task twice quickly, like a double-click, to delete it"],
+      steps: ["Tap a task twice quickly, like a double-click, to delete it", "This works on locked tasks too"],
       note: "A deleted task won't show up in your visible History, but if it was looping, its deletion still matters - it reappears after every ticked or crossed task, but before any task with no history at all that day."
     },
     {
@@ -1798,7 +2359,13 @@ document.addEventListener("DOMContentLoaded", () => {
       emoji: "➕",
       heading: "Adding a Task with an Icon",
       steps: ["Tap the emoji button next to the input box and pick an emoji", "Type your task into the input box", "Tap the add button to add it to your list"],
-      note: "Once a task is added, its icon is locked in - there's currently no way to change it afterward. Pick carefully before adding."
+      note: "You can change a task's text or icon later - see Editing a Task below."
+    },
+    {
+      emoji: "✏️",
+      heading: "Editing a Task (Text or Emoji)",
+      steps: ["Press and hold a task without moving your finger - a pencil appears in its bottom-right corner", "Tap the pencil - the input box opens with that task's text and emoji", "Change the text, the emoji, or both, then tap the add button"],
+      note: "The task stays exactly where it is and keeps its Recur and Notify settings - editing never adds a new task. Until you tap the add button, the input box keeps editing that task. If you had started typing a new task, it comes back after the edit."
     },
     {
       emoji: "↕️",
@@ -1807,28 +2374,52 @@ document.addEventListener("DOMContentLoaded", () => {
       note: "This only reorders today's list - it has no effect on history or on how loops reorder later."
     },
     {
+      emoji: "🔒",
+      heading: "Subtasks and Locks",
+      steps: ["Press and hold a task without moving your finger, then tap Task - a box opens under the task", "Type a subtask in the input box and tap the add button", "Tap the circle on a subtask to mark it done, tap the small bin to delete it, or press and hold a subtask and drag it to reorder", "A task with subtasks left for today shows a lock with a number in its bottom-right corner - that is how many are still to do today", "While it is locked the task can't be swiped right or left, it doesn't even move. Double-tapping it still deletes it", "Once today's target is done the number turns into a tick: white while other subtasks remain, blue when every subtask is complete", "An unlocked task answers only a swipe to the right (tick) - no cross and no delete"],
+      note: "The Task button is blue when the task has no subtasks or when every subtask is done, and white while any subtask is left. At midnight a task whose target was met is ticked automatically, otherwise it is crossed."
+    },
+    {
       emoji: "🕘",
       heading: "Viewing Your History",
-      steps: ["Tap the clock button at the top, the right-most of the three buttons, to open History", "See everything you've ticked or crossed, day by day", "Use the arrows to move one day at a time, backward or forward"],
+      steps: ["Tap the clock button at the top, the third of the four buttons, to open History", "See everything you've ticked or crossed, day by day", "Use the arrows to move one day at a time, backward or forward"],
       note: "You can only look back 6 days. Anything older has already been used to decide how your looped tasks reappear, and is no longer stored."
+    },
+    {
+      emoji: "📊",
+      heading: "The Dashboard",
+      steps: ["Tap the chart button at the top, the right-most of the four buttons, to open it - it sums up how you are doing, card by card", "To Do: how many tasks are still left today", "Tick Vs Cross: your total ticks against your total crosses, as a green and red bar", "Daily Tick and Cross: ticks and crosses for each day of this week, today highlighted", "Rate, Tick per Cross, Tick per Day and Tick per Week: four small tiles - the share of resolved tasks you ticked, your ticks for every cross, and your average ticks per day and per week", "Weekly Tick and Cross: a line chart of ticks and crosses week by week - seven weeks are in view, the newest at the right, and you scroll left to see older weeks", "Mostly Tick Task and Mostly Cross Task: the tasks you tick, and the tasks you cross, most often", "Task Progress: one donut per task that has subtasks and an emoji, in the same order as your list - the ring fills as subtasks get done, the number under it is done out of total, and a tick joins it once today's target is met (white, then blue when all are done)", "Notify and Recur, red: how many loop-once tasks fall on each weekday, and how many of them have a notification", "Notify and Recur, green: the same count for endless loops"],
+      note: "In Task Progress, scroll sideways to see more than five donuts; a dim dot marks an empty spot. The Task Progress card and the Notify and Recur tables count only the tasks and loops you have now; the other cards count your whole history."
     },
     {
       emoji: "😀",
       heading: "Customizing Your Emoji Set",
-      steps: ["Tap the smiley-with-plus button at the top, the middle one of the three buttons, to open your full emoji library", "Press and hold an emoji, then drag it up into the Emojis Box to add it there", "Press and hold an emoji already inside the Emojis Box, then drag it sideways to reorder it"],
+      steps: ["Tap the smiley-with-plus button at the top, the second of the four buttons, to open your full emoji library", "Press and hold an emoji, then drag it up into the Emojis Box to add it there", "Press and hold an emoji already inside the Emojis Box, then drag it sideways to reorder it"],
       note: "The Emojis Box is your quick-access set - it's what you'll actually pick from day to day."
     },
     {
       emoji: "🔔",
       heading: "Setting a Notification",
-      steps: ["Press and hold a task without moving your finger, then tap \uD83D\uDD14 Notify - HH, MM and SS appear", "Tap HH, MM or SS - all three change to 00", "Press and hold a number, then slide sideways: left counts up, right counts down. Lift your finger and the number turns red - it's set", "Tap away anywhere else to close the picker and save your notification", "To remove it: slide a number back to 00, quick-swipe right on it, then tap away"],
-      note: "The time uses a 24-hour clock, so 18:30 means 6:30 PM. Watch the task itself - a small bell appears next to it once a notification is saved. A looping task repeats its notification on every looped day, unless you tick, cross or delete it before the time. On Android you'll be asked to allow notifications the first time."
+      steps: ["Press and hold a task without moving your finger, then tap \uD83D\uDD14 Notify - HH, MM and SS appear", "Tap HH, MM or SS - all three change to 00", "Press and hold a number, then slide sideways: left counts up, right counts down. Lift your finger and the number turns red - it's set", "Tap away anywhere else to close the picker and save your notification", "To remove it: slide a number back to 00, quick-swipe right on it, then tap away", "Quicker: hold the task and tap the Reset icon, the circular arrow between Notify and Recur - it clears Notify and Recur at once"],
+      note: "The time uses a 24-hour clock, so 18:30 means 6:30 PM. Watch the task itself - a small bell appears next to it once a notification is saved. A looping task repeats its notification on every looped day, unless you tick, cross or delete it before the time. On Android you'll be asked to allow notifications the first time. The Reset icon is dimmed and does nothing while the task has neither a notification nor a repeat, and turns bright white once either one is on."
     },
     {
       emoji: "🔁",
-      heading: "Making a Task Recur (or Stop Recurring)",
-      steps: ["Press and hold a task without moving your finger, then tap \uD83D\uDD01 Recur - a row of day letters opens", "Tap a letter to turn that day on; tap again to turn it off", "Tap away anywhere else to close the picker and save your choice", "To stop it repeating: hold the task again, turn off every highlighted letter, then tap away"],
-      note: "Watch the task itself, not the picker - a small loop mark appears next to it once a repeat is saved, and disappears once every day is off. When a looping task reappears, its order depends on what happened to it last time: tasks that were ticked or crossed come first, a task that was deleted comes after those, and a task with no record at all that day comes last."
+      heading: "Loops: Once and Endless Recurs",
+      steps: ["Press and hold a task without moving your finger, then tap Recur - a row of day letters opens", "Endless (green): tap the letters of the days you want - the task comes back on those days again and again", "Once (red): press and hold a letter instead of tapping - only that day turns red, and the loop ends after it", "Tap more letters to turn more days red - or green, if you started with a tap. Tap a lit letter again to turn that day off, then tap away anywhere else to close the picker and save", "To stop it repeating: hold the task again, turn off every highlighted letter, then tap away", "Quicker: hold the task and tap the Reset icon, the circular arrow between Notify and Recur - it clears Recur and Notify at once"],
+      note: "Red means once and green means endless. The colour follows the loop everywhere: the loop mark and the bell on the task, the Recur and Notify buttons, the HH MM SS fields, and the Notify and Recur tables on the Dashboard. A bell on a task with no loop is red. The first gesture you make sets the mode, and it stays until every day is off. A deadline - red days filled in a run - only exists for a task with subtasks; see Habitual and Critical Deadlines. When a looping task reappears, tasks that were ticked or crossed come first, a deleted one comes after, and a task with no record that day comes last. The Reset icon is dimmed while the task has neither a repeat nor a notification. Resetting a looping task stops it from coming back."
+    },
+    {
+      emoji: "⏳",
+      heading: "Habitual and Critical Deadlines",
+      steps: ["Press and hold a task without moving your finger, then tap Task and add its subtasks - a lock with a number appears on the task", "Press and hold the task again, then tap Recur - a row of day letters opens", "Habitual (green): tap the letters of the days you want - the task comes back on those days and its subtasks start undone each time", "Critical (red): press and hold the last day - every day after today up to it turns red, and the subtasks are spread over those days", "Tap another letter to move the last day forward or back - the red days refill from tomorrow up to it. A day in the middle can't be switched off by itself, and tapping today's letter removes the deadline", "Tap away anywhere else to close the picker and save", "The number on the lock is today's share - finish it and the lock turns into a tick, then swipe the task right"],
+      note: "There is no deadline without a subtask - a plain red loop only marks the days you pick. A red loop you already have turns into a Critical Deadline when you add its first subtask. Today is never red, so on the last day the red loop mark is gone - that is how you know it is the last day. Finishing early lowers the number for the days that follow. At midnight a task whose share was met is ticked for you, otherwise it is crossed."
+    },
+    {
+      emoji: "📅",
+      heading: "Scheduling a Task for Later",
+      steps: ["Add the task as usual - it appears on today's list", "Press and hold the task without moving your finger, then tap Recur - a row of day letters opens", "Once (red): press and hold the letter of the day you want - it turns red. Today's letter can't be picked", "Endless (green): tap the letters of the days you want - they turn green", "Tap away anywhere else to close the picker and save - the loop mark appears on the task", "Tap the task twice quickly, like a double-click, to delete today's copy - the loop stays and brings the task back on the day you picked", "Subtasks: press and hold the task and tap Task - on a green task do it any time, on a red task do it when the day comes"],
+      note: "A red task gets its subtasks on the day because added early they would turn it into a deadline that also appears on the days in between. A green task brings its subtasks back undone on every green day, and anything you add or delete changes every future day - an extra subtask added on one day comes back on all the next ones. Want a reminder? Before you tap away, tap Notify and set a time. If you skip the delete and today is not a day you picked, midnight crosses today's copy for you and it counts as a cross in your stats. The day letters cover the next six days."
     }
   ];
 
@@ -1866,6 +2457,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inputEl.blur();
     emojiPanel.classList.remove("show");
     if (historyPanelOpen) closeHistory();
+    if (dashboardOpen) closeDashboard();
     if (emojiCustomize.classList.contains("show")) closeEmojiCustomize();
     renderInstructionsList();
     instructionsConfirmRow.style.display = firstTime ? "flex" : "none";
@@ -1918,7 +2510,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateHistoryNav() {
     const weekdayIdx = weekdayForDateStr(viewedDateStr);
-    historyTitleEl.textContent = WEEKDAY_NAMES[weekdayIdx];
+    const vd = parseDateStr(viewedDateStr);
+    historyTitleEl.innerHTML = WEEKDAY_NAMES[weekdayIdx] + '<span class="history-date">, ' + vd.getDate() + " " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][vd.getMonth()] + "</span>";
+    try { fitPanelTitleTops(); } catch (e) {}   // every day change re-measures, so the baseline of the day name and date stays exactly 18px above the first card
     historyNextBtn.disabled = viewedDateStr >= todayStr();
     historyPrevBtn.disabled = viewedDateStr <= historyFloorDate();
   }
@@ -1955,7 +2549,10 @@ document.addEventListener("DOMContentLoaded", () => {
       body.appendChild(text);
       const badge = document.createElement("div");
       badge.className = "history-icon " + entry.action;
-      badge.textContent = entry.action === "tick" ? "✓" : "✕";
+      {   // tick and cross drawn from the same icon set (same size, same stroke) as the dashboard
+        const ico = entry.action === "tick" ? ["#4CC97F", '<path d="M4 12.5l5 5L20 6.5"/>'] : ["#E5484D", '<path d="M6 6l12 12M18 6L6 18"/>'];
+        badge.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="' + ico[0] + '" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">' + ico[1] + '</svg>';
+      }
       row.appendChild(badge);   // tick / cross on the left
       row.appendChild(body);    // text on the right
       historyListEl.appendChild(row);
@@ -2019,6 +2616,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function render() {
     if (openPickerTaskId !== null) closeOpenPicker();
+    if (editingTaskId !== null) cancelEdit();
     listEl.innerHTML = "";
     tasks.forEach((task, index) => {
       listEl.appendChild(renderRow(task, index));
@@ -2047,17 +2645,81 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (hasActiveLoop(task)) {
       row.classList.add("has-loop");
+      row.classList.toggle("once-loop", task.loopMode === "once");
       const badge = document.createElement("div");
       badge.className = "loop-badge";
-      badge.innerHTML = LOOP_ICON_SVG;
+      badge.innerHTML = loopSvgFor(task);
       row.appendChild(badge);
     }
 
     wrap.appendChild(row);
     updateBellBadge(wrap, task);
+    updateSubMeta(wrap, task);
 
     attachGestures(row, wrap, task, index);
     return wrap;
+  }
+
+  // ---- Edit (pencil) ------------------------------------------------------------------------------------------
+  // The pencil is NOT on a normal card, and not on a card that is being edited: it only appears in the bottom-right
+  // corner after a hard press (on the hold screen with Notify / Reset / Recur). Tap it: the chat box opens holding that
+  // task's text and emoji. The card stays on the screen, in place (no highlight, no scrolling).
+  // Pressing add then changes that card's text and emoji (same position, same Recur / Notify); it never adds a new task.
+  // Edit mode ends when add is pressed (or when that card is ticked / crossed / deleted or the list is rebuilt).
+  function makeEditButton(task) {
+    const b = document.createElement("button");
+    b.setAttribute("type", "button"); b.className = "edit-btn"; b.setAttribute("aria-label", "Edit task");
+    b.innerHTML = PENCIL_SVG;
+    let sx = 0, sy = 0, down = false;
+    // The card's own gestures (swipe, hold, double tap) must not start from the pencil.
+    b.addEventListener("pointerdown", (e) => { e.stopPropagation(); e.preventDefault(); sx = e.clientX; sy = e.clientY; down = true; });
+    b.addEventListener("pointerup", (e) => {
+      e.stopPropagation();
+      if (!down) return; down = false;
+      if (Math.hypot(e.clientX - sx, e.clientY - sy) < 12) toggleEdit(task);
+    });
+    b.addEventListener("pointercancel", () => { down = false; });
+    b.addEventListener("click", (e) => e.stopPropagation());
+    return b;
+  }
+  function toggleEdit(task) {
+    if (openPickerTaskId !== null) closeOpenPicker();
+    if (editingTaskId === task.id) { inputEl.focus(); return; }   // already editing this task: keep what is typed, just reopen the chat box
+    if (editingTaskId === null) editDraft = { text: inputEl.value, icon: pendingIcon };   // keep a half-typed new task
+    editingTaskId = task.id;
+    inputEl.value = task.text;
+    setToggleIcon(task.icon || null);
+    emojiPanel.classList.remove("show");
+    inputEl.focus();
+    try { inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length); } catch (e) {}
+  }
+  function endEdit() {   // back to normal adding; whatever was in the chat box before editing comes back
+    editingTaskId = null;
+    inputEl.value = editDraft ? editDraft.text : "";
+    setToggleIcon(editDraft ? editDraft.icon : null);
+    editDraft = null;
+    emojiPanel.classList.remove("show");
+  }
+  function cancelEdit() { if (editingTaskId !== null) endEdit(); }
+  function applyEdit(task, val) {
+    task.text = val; task.icon = pendingIcon;
+    if (task.loopId && loopTemplates[task.loopId]) {   // a looping task keeps looping with its new text / emoji
+      loopTemplates[task.loopId].text = val; loopTemplates[task.loopId].icon = task.icon;
+      saveLoopTemplates();
+    }
+    saveTasks();   // also re-schedules its reminder with the new title
+    const wrapEl = listEl.querySelector('.row-wrap[data-task-id="' + task.id + '"]');
+    const rowEl = wrapEl && wrapEl.querySelector(".row");
+    if (rowEl) {   // change the card in place: same position
+      const txt = rowEl.querySelector(".task-text"); if (txt) txt.textContent = task.text;
+      let slot = rowEl.querySelector(".emoji-slot");
+      if (task.icon) {
+        if (!slot) { slot = document.createElement("div"); slot.className = "emoji-slot"; rowEl.insertBefore(slot, rowEl.firstChild); }
+        slot.textContent = task.icon;
+      } else if (slot) slot.remove();
+    }
+    endEdit();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   }
 
   function updateLoopBadge(wrapEl, task) {
@@ -2066,15 +2728,46 @@ document.addEventListener("DOMContentLoaded", () => {
     let badge = rowEl.querySelector(".loop-badge");
     const active = hasActiveLoop(task);
     rowEl.classList.toggle("has-loop", active);
+    rowEl.classList.toggle("once-loop", active && task.loopMode === "once");
     if (active && !badge) {
       badge = document.createElement("div");
       badge.className = "loop-badge";
-      badge.innerHTML = LOOP_ICON_SVG;
+      badge.innerHTML = loopSvgFor(task);
       rowEl.appendChild(badge);
     } else if (!active && badge) {
       badge.remove();
     }
-    refreshComboBadge(rowEl);
+    if (active && badge) badge.innerHTML = loopSvgFor(task);
+    updateBellBadge(wrapEl, task);   // bell colour follows the loop; also refreshes the combined icon
+    updateSubMeta(wrapEl, task);   // Recur changes the quota (red days left / green / none)
+  }
+
+  // Bottom-right corner of the card: [lock + subtasks to do today] [subtask count]. The lock turns into a tick inside a lock once today's quota is met.
+  function updateSubMeta(wrapEl, task) {
+    const rowEl = wrapEl && wrapEl.querySelector(".row"); if (!rowEl) return;
+    let m = rowEl.querySelector(".sub-meta");
+    const n = task.subtasks ? task.subtasks.length : 0;
+    rowEl.classList.toggle("row--sub", n > 0);
+    if (!n) { if (m) m.remove(); return; }
+    if (!m) { m = document.createElement("div"); m.className = "sub-meta"; rowEl.appendChild(m); }
+    const st = subState(task);
+    m.innerHTML = '<span class="sub-lock' + (st.met && !(task.subtasks || []).some((x) => !x.done) ? " met" : "") + '">' + (st.met ? LOCK_OK_SVG : lockSvg(st.left)) + "</span>";
+  }
+  const lockToastEl = document.createElement("div");
+  lockToastEl.id = "lock-toast";
+  document.getElementById("app").appendChild(lockToastEl);
+  let lockToastTimer = null;
+  function showLockMsg(task) {
+    const n = subState(task).left;
+    lockToastEl.textContent = n + " more subtask" + (n === 1 ? "" : "s") + " today";
+    try {   // same spot as the undo button: 20px above the chat box
+      const bar = document.querySelector(".input-bar").getBoundingClientRect();
+      const appR = document.getElementById("app").getBoundingClientRect();
+      lockToastEl.style.bottom = Math.round(appR.bottom - bar.top + 20) + "px";
+    } catch (e) {}
+    lockToastEl.classList.add("show");
+    clearTimeout(lockToastTimer);
+    lockToastTimer = setTimeout(() => lockToastEl.classList.remove("show"), 1800);
   }
 
   function buildDayPicker(task, kind) {
@@ -2084,7 +2777,26 @@ document.addEventListener("DOMContentLoaded", () => {
     return picker;
   }
 
-  // Hold a task: its own card turns into two choices (no gap yet). The gap opens only after a choice.
+  const RESET_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
+  // Pencil: a slim, long 8px black pencil (eraser band, body, pointed tip) on an 18px round off-white circle (like the add button), drawn in one 18px icon.
+  const EDIT_ICON_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>';   // Edit icon: a square with an outlined pen, as in the reference picture
+  const PENCIL_SVG = '<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="9" fill="#F4F3EF"/><g transform="translate(8.55 9.45) scale(1.067) rotate(45)" fill="#000000"><rect x="-1.2" y="-4.7" width="2.4" height="1.2" rx="0.45"/><rect x="-1.2" y="-3.05" width="2.4" height="5.05"/><path d="M-1.2 2.40H1.2L0 4.7Z"/></g></svg>';
+
+  // Reset: clears Recur and Notify of a task in one go (same clean-up as un-selecting every day / the reminder time).
+  function hasRecurOrNotify(task) { return hasActiveLoop(task) || !!task.remindAt; }
+  function resetRecurNotify(task) {
+    if (!hasRecurOrNotify(task)) return;
+    task.repeatDays = null;
+    task.loopMode = null; task.onceDates = null;
+    if (task.loopId) { task.rankLoop = task.loopId; delete loopTemplates[task.loopId]; task.loopId = null; }
+    task.remindAt = null;
+    saveLoopTemplates();   // before saveTasks: saving also cancels the reminders that are no longer wanted
+    saveTasks();
+    const rw = listEl.querySelector('.row-wrap[data-task-id="' + task.id + '"]');
+    if (rw) { updateLoopBadge(rw, task); updateBellBadge(rw, task); }
+  }
+
+  // Hold a task: its own card turns into three choices (no gap yet). The gap opens only after a choice.
   let chooserEl = null;
   function clearChooser() {
     if (!chooserEl) return;
@@ -2096,14 +2808,28 @@ document.addEventListener("DOMContentLoaded", () => {
     if (openPickerTaskId !== null) closeOpenPicker();
     const row = wrap.querySelector(".row"); if (!row) return;
     openPickerTaskId = task.id; openPickerEl = null;
-    const box = document.createElement("div"); box.className = "choose"; chooserEl = box;
-    [[BELL_SVG.replace(/width="11" height="11"/, 'width="24" height="24"').replace(/currentColor/g, "#E5484D").replace('stroke-width="2"', 'stroke-width="2.3"'), "Notify", "time"],
-     [LOOP_ICON_SVG.replace(/width="13" height="13"/, 'width="16" height="16"'), "Recur", "days"]].forEach(([svg, label, kind]) => {
+    const box = document.createElement("div"); box.className = "choose has-sub"; chooserEl = box;
+    const canReset = hasRecurOrNotify(task);   // Reset is only usable while Recur or Notify is on
+    [[(task.subtasks && task.subtasks.some((x) => !x.done)) ? SUBS_BTN_SVG.replace(/#4C8DF6/g, "#F4F3EF") : SUBS_BTN_SVG, "Task", "sub"],   // blue by default (no subtasks) and when ALL subtasks are done, white while any subtask is left
+     [BELL_SVG.replace(/width="11" height="11"/, 'width="24" height="24"').replace(/currentColor/g, (hasActiveLoop(task) && task.loopMode !== "once") ? "#4CC97F" : "#E5484D").replace('stroke-width="2"', 'stroke-width="2.3"'), "Notify", "time"],
+     [RESET_SVG, "Reset", "reset"],
+     [loopSvgFor(task).replace(/width="13" height="13"/, 'width="16" height="16"'), "Recur", "days"]].forEach(([svg, label, kind]) => {
       const btn = document.createElement("button");
-      btn.setAttribute("type", "button"); btn.innerHTML = "<span>" + label + "</span>" + svg;
-      addTapHandler(btn, () => { if (kind === "time") askNotifyPermission(); openPickerFor(task, wrap, kind); });
+      btn.setAttribute("type", "button");
+      btn.className = "ch-" + kind;
+      if (kind === "reset") {
+        btn.className = "reset-btn" + (canReset ? "" : " off");
+        btn.setAttribute("aria-label", "Reset Recur and Notify");
+        if (!canReset) btn.setAttribute("aria-disabled", "true");
+        btn.innerHTML = svg;
+        addTapHandler(btn, () => { if (!canReset) return; resetRecurNotify(task); closeOpenPicker(); });
+      } else {
+        btn.innerHTML = "<span>" + label + "</span>" + svg;
+        addTapHandler(btn, () => { if (kind === "sub") { openSubSlot(task, wrap); return; } if (kind === "time") askNotifyPermission(); openPickerFor(task, wrap, kind); });
+      }
       box.appendChild(btn);
     });
+    box.appendChild(makeEditButton(task));   // pencil: bottom-right corner of the hold screen
     // Taps on the choices must not reach the card's own gesture handler (it would treat them
     // as "tap while a picker is open" and close the panel straight away). Releasing the finger
     // that started the hold has no matching pointerdown here, so it still passes through.
@@ -2116,11 +2842,38 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showDays(picker, task) {
+    syncOnce(task);
     picker.innerHTML = "";
     const days = task.repeatDays ? task.repeatDays.slice() : [false, false, false, false, false, false, false];
+    // The first gesture decides the mode: a tap = green (endless), a long press = red (once). Afterwards both gestures toggle days in that mode.
+    let mode = days.some(Boolean) ? (task.loopMode === "once" ? "once" : "endless") : null;
+    const todayDow = new Date().getDay(), btns = [];
+    const paint = () => btns.forEach((b, k) => { b.classList.toggle("active", !!days[k] && mode !== "once"); b.classList.toggle("once", !!days[k] && mode === "once"); });
+    // A deadline only exists for a task WITH subtasks. There the red days always form one solid run counted from today: a hard press or a tap on a day fills
+    // every day from tomorrow up to that day (today is the start, never a red day itself), forward or back, single days in the middle can't be removed,
+    // and tapping today removes the loop. A plain task (no subtasks) has no deadline: a hard press turns only that day red, taps turn other days red,
+    // and a tap on a lit day turns it off. Green (endless) loops always toggle single days.
+    const hasSubs = () => !!(task.subtasks && task.subtasks.length);
+    const fillFromToday = (i) => { days.fill(false); for (let k = (todayDow + 1) % 7; ; k = (k + 1) % 7) { days[k] = true; if (k === i) break; } };
+    const tap = (i) => {
+      if (mode === "once" && hasSubs()) {
+        if (i === todayDow) { days.fill(false); mode = null; paint(); return; }   // today removes the whole deadline
+        fillFromToday(i); paint(); return;
+      }
+      if (mode === "once" && i === todayDow) return;
+      if (!mode) mode = "endless"; days[i] = !days[i]; if (!days.some(Boolean)) mode = null; paint();
+    };
+    const press = (i) => {
+      if (mode) { tap(i); return; }
+      if (i === todayDow) return;   // today is never a red day
+      mode = "once"; days.fill(false);
+      if (hasSubs()) fillFromToday(i);   // deadline: every day from today up to the pressed day
+      else days[i] = true;               // plain task: only the pressed day turns red
+      paint();
+    };
     DAY_LABELS.forEach((label, i) => {
       const btn = document.createElement("button");
-      btn.className = "day-btn" + (days[i] ? " active" : "") + (i === new Date().getDay() ? " today" : "");
+      btn.className = "day-btn" + (days[i] ? (mode === "once" ? " once" : " active") : "") + (i === new Date().getDay() ? " today" : "");
       btn.textContent = label;
       // Small date number (top-left): the next date this weekday falls on, starting from today.
       const dd = document.createElement("span");
@@ -2129,13 +2882,25 @@ document.addEventListener("DOMContentLoaded", () => {
       dd.textContent = new Date(now.getFullYear(), now.getMonth(), now.getDate() + ((i - now.getDay() + 7) % 7)).getDate();
       btn.appendChild(dd);
       btn.setAttribute("type", "button");
-      addTapHandler(btn, () => {
-        days[i] = !days[i];
-        btn.classList.toggle("active", days[i]);
+      let sx = 0, sy = 0, down = false, fired = false, timer = null;
+      btn.addEventListener("pointerdown", (e) => {
+        e.preventDefault(); sx = e.clientX; sy = e.clientY; down = true; fired = false;
+        timer = setTimeout(() => { if (down) { fired = true; press(i); } }, 420);
       });
+      btn.addEventListener("pointermove", (e) => { if (down && Math.hypot(e.clientX - sx, e.clientY - sy) > 12) { down = false; clearTimeout(timer); } });
+      btn.addEventListener("pointerup", (e) => {
+        clearTimeout(timer);
+        if (!down) return;
+        down = false;
+        if (!fired && Math.hypot(e.clientX - sx, e.clientY - sy) < 12) tap(i);
+      });
+      btn.addEventListener("pointercancel", () => { down = false; clearTimeout(timer); });
+      btns.push(btn);
       picker.appendChild(btn);
     });
     picker._days = days;
+    picker._getMode = () => mode;
+    picker._orig = days.join() + "|" + mode;
   }
 
   // HH : MM : SS.
@@ -2146,6 +2911,7 @@ document.addEventListener("DOMContentLoaded", () => {
   //  - To go back to labels, start a fresh quick right swipe on a number that is already 00.
   function showTime(picker, task) {
     picker.innerHTML = ""; picker.classList.add("time-row");
+    picker.classList.toggle("endless", hasActiveLoop(task) && task.loopMode !== "once");   // time fields: red (once / no loop) or green (endless)
     const r = task.remindAt, vals = r ? [r.h, r.m, r.s] : [null, null, null];
     const MAX = [23, 59, 59], LAB = ["HH", "MM", "SS"], els = [], tts = [], dragging = [false, false, false];
     const DEAD = 10; // px of drag before counting starts
@@ -2237,6 +3003,187 @@ document.addEventListener("DOMContentLoaded", () => {
     picker.style.opacity = "1";
   }
 
+  // ---- Subtask slot: opens under the task card after Subtask in the hold screen ----
+  function openSubSlot(task, wrap) {
+    if (editingTaskId !== null) cancelEdit();
+    if (!(chooserEl && openPickerTaskId === task.id)) { if (openPickerTaskId !== null) closeOpenPicker(); }
+    clearChooser();
+    if (!task.subtasks) task.subtasks = [];
+    const slot = document.createElement("div");
+    slot.className = "sub-slot";
+    subSlotEl = slot; subTaskId = task.id; openPickerEl = slot; openPickerTaskId = task.id;
+    subDraft = { text: inputEl.value, placeholder: inputEl.placeholder };
+    inputEl.value = "";   // the placeholder stays "Add Your Tasks..." in subtask mode too
+    emojiPanel.classList.remove("show");
+    document.querySelector(".input-bar").classList.add("sub-mode");   // no smile button for subtasks, narrower bar
+    renderSubSlot(task);
+    flipList(() => {
+      listEl.insertBefore(slot, wrap.nextSibling);
+      showSubSlot(wrap, slot, true);
+    });
+  }
+  let subCloseInstant = false;
+  function closeSubSlot() {
+    const slot = subSlotEl; if (!slot) return;
+    subSlotEl = null; subTaskId = null;
+    if (openPickerEl === slot) openPickerEl = null;
+    const bar = document.querySelector(".input-bar"); if (bar) bar.classList.remove("sub-mode");
+    inputEl.value = subDraft ? subDraft.text : "";
+    inputEl.placeholder = "Add Your Tasks...";
+    subDraft = null;
+    if (document.activeElement === inputEl) inputEl.blur();
+    if (slot.parentNode && subCloseInstant) {
+      flipList(() => slot.remove());   // last subtask deleted: the slot goes at once and the cards below slide up (no fade, no "Nothing here yet")
+    } else if (slot.parentNode) {
+      const h = slot.offsetHeight;
+      slot.style.overflow = "hidden"; slot.style.height = h + "px";
+      void slot.offsetHeight;
+      slot.style.transition = "height 0.1s ease, margin-bottom 0.1s ease, padding 0.1s ease, opacity 0.1s ease";
+      slot.style.height = "0px"; slot.style.marginBottom = "-" + ROW_GAP + "px";
+      slot.style.paddingTop = "0px"; slot.style.paddingBottom = "0px"; slot.style.opacity = "0";
+      setTimeout(() => { if (slot.parentNode) slot.remove(); }, 100);
+    }
+  }
+  // Keep the card and its slot in view. protectCard: never push the card itself out at the top (opening); otherwise show the slot's end (a subtask was added).
+  function showSubSlot(wrap, slot, protectCard) {
+    const lr = listEl.getBoundingClientRect(), wr = wrap.getBoundingClientRect(), sr = slot.getBoundingClientRect();
+    let d = 0;
+    if (sr.bottom > lr.bottom) d = sr.bottom - lr.bottom;
+    if (protectCard) d = Math.min(d, Math.max(0, wr.top - lr.top));
+    if (wr.top < lr.top && protectCard) d = wr.top - lr.top;
+    if (d) listEl.scrollTop += d;
+  }
+  function renderSubSlot(task) {
+    const slot = subSlotEl; if (!slot) return;
+    slot.innerHTML = "";
+    const subs = task.subtasks || [];
+    if (!subs.length) {
+      const e = document.createElement("div"); e.className = "sub-empty"; e.textContent = "Nothing here yet";
+      slot.appendChild(e); return;
+    }
+    subs.forEach((x) => slot.appendChild(makeSubItem(task, x)));
+  }
+  function makeSubItem(task, x) {
+    const it = document.createElement("div");
+    it.className = "sub-item" + (x.done ? " done" : "");
+    const tick = document.createElement("button");
+    tick.setAttribute("type", "button"); tick.className = "sub-tick"; tick.setAttribute("aria-label", "Done");
+    tick.innerHTML = x.done ? SUB_TICK_SVG : "";
+    const tx = document.createElement("div"); tx.className = "sub-text"; tx.textContent = x.text;
+    const del = document.createElement("button");
+    del.setAttribute("type", "button"); del.className = "sub-del"; del.setAttribute("aria-label", "Delete subtask");
+    del.innerHTML = SUB_DEL_SVG;
+    it.appendChild(tick); it.appendChild(tx); it.appendChild(del);
+    addTapHandler(tick, () => toggleSub(task, x));
+    addTapHandler(del, () => deleteSub(task, x));
+    attachSubDrag(it, task, x);
+    return it;
+  }
+  // Every subtask change: save, keep a looping task's template in step (red keeps progress, green starts clean each day), refresh the card.
+  function afterSubChange(task) {
+    if (task.loopId && loopTemplates[task.loopId]) {
+      loopTemplates[task.loopId].subtasks = cloneSubs(task.subtasks, task.loopMode === "once");
+      saveLoopTemplates();
+    }
+    saveTasks();
+    const w = listEl.querySelector('.row-wrap[data-task-id="' + task.id + '"]');
+    if (w) updateSubMeta(w, task);
+    if (subSlotEl && subTaskId === task.id) renderSubSlot(task);
+  }
+  function subDayChanged() { const before = history.date; ensureHistoryFresh(); if (history.date !== before) { render(); return true; } return false; }
+  function toggleSub(task, x) {
+    if (subDayChanged()) return;
+    x.done = !x.done; x.doneOn = x.done ? todayStr() : null;
+    afterSubChange(task);
+  }
+  function deleteSub(task, x) {
+    if (subDayChanged()) return;
+    task.subtasks = (task.subtasks || []).filter((y) => y !== x);
+    if (!task.subtasks.length && subSlotEl && subTaskId === task.id) {
+      // the last subtask is gone: update the card, then close the gap under it straight away without drawing "Nothing here yet"
+      const keep = subSlotEl; subSlotEl = null;
+      afterSubChange(task);
+      subSlotEl = keep;
+      subCloseInstant = true; try { closeOpenPicker(); } finally { subCloseInstant = false; }
+      return;
+    }
+    afterSubChange(task);
+  }
+  function addSubtask() {
+    const val = inputEl.value.trim();
+    if (!val) return;
+    const task = tasks.find((t) => t.id === subTaskId);
+    if (!task) { closeOpenPicker(); return; }
+    if (subDayChanged()) return;
+    inputEl.value = "";
+    if (!task.subtasks) task.subtasks = [];
+    task.subtasks.push({ id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), text: val, done: false, doneOn: null });
+    makeDeadline(task);   // once loop + subtasks = deadline: today up to the end day
+    afterSubChange(task);
+    const w = listEl.querySelector('.row-wrap[data-task-id="' + task.id + '"]');
+    if (w) updateLoopBadge(w, task);
+    if (w && subSlotEl) showSubSlot(w, subSlotEl, false);
+  }
+  // Drag to reorder: hold a subtask, then move it up or down. A quick vertical move scrolls the list instead.
+  function attachSubDrag(it, task, x) {
+    let pid = null, sx = 0, sy = 0, anchorY = 0, timer = null, mode = null, items = [], idx = 0, shift = 0, pitch = 44;
+    const clear = () => { if (timer) clearTimeout(timer); timer = null; };
+    it.addEventListener("pointerdown", (e) => {
+      if (!e.isPrimary || e.target.closest("button") || pid !== null) return;
+      pid = e.pointerId; sx = e.clientX; sy = anchorY = e.clientY; mode = null; shift = 0;
+      try { it.setPointerCapture(e.pointerId); } catch (err) {}
+      timer = setTimeout(() => {
+        if (mode || !subSlotEl) return;
+        mode = "drag";
+        items = Array.from(subSlotEl.querySelectorAll(".sub-item"));
+        idx = items.indexOf(it);
+        pitch = items.length > 1 ? (items[items.length - 1].offsetTop - items[0].offsetTop) / (items.length - 1) : it.offsetHeight;
+        it.classList.add("drag"); it.style.transition = "none";
+        items.forEach((o) => { if (o !== it) o.style.transition = "transform 0.18s ease"; });
+      }, 300);
+    });
+    it.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pid) return;
+      const dy = e.clientY - sy;
+      if (!mode) {
+        if (Math.hypot(e.clientX - sx, dy) > 10) { clear(); mode = "scroll"; anchorY = e.clientY; }
+        return;
+      }
+      if (mode === "scroll") { listEl.scrollTop -= (e.clientY - anchorY); anchorY = e.clientY; return; }
+      const lo = -idx, hi = items.length - 1 - idx;
+      const clamped = Math.max(lo * pitch, Math.min(hi * pitch, dy));
+      it.style.transform = "translateY(" + clamped + "px)";
+      const ns = Math.max(lo, Math.min(hi, Math.round(clamped / pitch)));
+      if (ns !== shift) {
+        shift = ns;
+        items.forEach((o, k) => {
+          if (o === it) return;
+          let off = 0;
+          if (shift > 0 && k > idx && k <= idx + shift) off = -pitch;
+          else if (shift < 0 && k < idx && k >= idx + shift) off = pitch;
+          o.style.transform = off ? "translateY(" + off + "px)" : "";
+        });
+      }
+    });
+    const end = (e) => {
+      if (e.pointerId !== pid) return;
+      pid = null; clear();
+      const was = mode; mode = null;
+      if (was !== "drag") return;
+      if (shift !== 0) {
+        const arr = task.subtasks, from = arr.indexOf(x);
+        if (from >= 0) { arr.splice(from, 1); arr.splice(from + shift, 0, x); }
+        afterSubChange(task);
+        return;
+      }
+      it.classList.remove("drag"); it.style.transform = ""; it.style.transition = "";
+      items.forEach((o) => { o.style.transition = ""; o.style.transform = ""; });
+    };
+    it.addEventListener("pointerup", end);
+    it.addEventListener("pointercancel", end);
+    it.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+
   // FLIP helper: records each task's on-screen position, runs the mutation
   // (DOM + scroll change), then slides every task from its old position to the
   // new one with a transform, so tasks glide and never jump.
@@ -2271,17 +3218,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function closeOpenPicker() {
     clearChooser();
+    if (subSlotEl) closeSubSlot();
     document.querySelectorAll(".row--held").forEach((r) => r.classList.remove("row--held"));
     if (openPickerTaskId === null) { openPickerEl = null; return; }
     const days = openPickerEl ? openPickerEl._days : null;
     const t = tasks.find((x) => x.id === openPickerTaskId);
     if (t && days) {
       const hasLoop = days.some(Boolean);
+      const modeNow = hasLoop && openPickerEl._getMode ? openPickerEl._getMode() : null;
+      const changed = openPickerEl._orig !== undefined && (days.join() + "|" + modeNow) !== openPickerEl._orig;
       t.repeatDays = hasLoop ? days.slice() : null;
+      if (!hasLoop) { t.loopMode = null; t.onceDates = null; }
+      else if (changed) { t.loopMode = modeNow === "once" ? "once" : null; t.onceDates = modeNow === "once" ? computeOnceDates(days) : null; }
       if (hasLoop) {
-        if (!t.loopId) t.loopId = "loop" + (uid++);
-        loopTemplates[t.loopId] = { text: t.text, icon: t.icon, repeatDays: t.repeatDays.slice(), remindAt: t.remindAt ? { ...t.remindAt } : null };
+        if (!t.loopId) { t.loopId = t.rankLoop || "loop" + (uid++); t.rankLoop = null; }
+        loopTemplates[t.loopId] = tplFromTask(t);
       } else if (t.loopId) {
+        t.rankLoop = t.loopId;
         delete loopTemplates[t.loopId];
         t.loopId = null;
       }
@@ -2320,7 +3273,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("pointerdown", (e) => {
     if (openPickerTaskId === null) return;
     const t = e.target;
-    if (t && t.closest && (t.closest(".day-picker-row") || t.closest(".row"))) return;
+    if (t && t.closest && (t.closest(".day-picker-row") || t.closest(".row") || (subSlotEl && (t.closest(".sub-slot") || t.closest("footer") || t.closest("#kb"))))) return;
     closeOpenPicker();
   }, true);
 
@@ -2504,6 +3457,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (mode === "swipe") {
         dx = deltaX;
+        if (tickBlocked(task)) return;   // a locked card does not move left or right at all (no message either)
+        if (unlockedSub(task) && deltaX < 0) return;   // an unlocked card only answers a swipe to the right (tick): no cross
         row.style.transform = `translateX(${dx}px)`;
         row.style.transition = "none";
         if (!revealEl) {
@@ -2532,10 +3487,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (mode === "swipe") {
         const rowWidth = row.offsetWidth || 320;
         const threshold = rowWidth * 0.3;
-        if (dx > threshold) {
+        if (dx > threshold && !tickBlocked(task)) {   // a task with unmet subtasks stays locked
           triggerActionAnimation(task, wrap, row, "tick", false, "tick");
           return;
-        } else if (dx < -threshold) {
+        } else if (dx < -threshold && !tickBlocked(task) && !unlockedSub(task)) {   // locked too: no tick and no cross (double tap still deletes)
           triggerActionAnimation(task, wrap, row, "cross", false, "cross");
           return;
         } else {
@@ -2579,6 +3534,7 @@ document.addEventListener("DOMContentLoaded", () => {
           closeOpenPicker(); // a plain tap while any picker is open just closes it
           return;
         }
+        if (unlockedSub(task)) return;   // an unlocked card has no double-tap delete: it stays unresponsive
         const now = Date.now();
         if (window._lastTapTime && window._lastTapTaskId === task.id && (now - window._lastTapTime < 380)) {
           window._lastTapTime = null;
@@ -2603,6 +3559,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function triggerActionAnimation(task, wrap, row, action, skipHistory, actionType) {
+    if (editingTaskId === task.id) cancelEdit();
     // Mutate data FIRST, synchronously, before any animation delay - so the
     // removal + history order can never be lost or reordered if the tab
     // gets backgrounded/suspended mid-animation. Everything after this is
@@ -2686,14 +3643,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 140);
   }
 
-  function showUndo() {
-    if (undoTimer) clearTimeout(undoTimer);
-    // Keep the Undo button exactly 20px above the chat box, wherever the chat box currently is.
+  // Undo button position: exactly 20px above the top of the chat box.
+  function placeUndo() {
     try {
       const bar = document.querySelector(".input-bar").getBoundingClientRect();
       const appR = document.getElementById("app").getBoundingClientRect();
-      toastEl.style.bottom = Math.round(appR.bottom - bar.top + 20) + "px";
+      toastEl.style.bottom = (appR.bottom - bar.top + 20) + "px";
     } catch (e) {}
+  }
+  // While the built-in keyboard slides up or down the chat box moves, so the Undo button follows it frame by frame.
+  window.__trackUndo = function () {
+    if (!toastEl.classList.contains("show")) return;
+    toastEl.style.transition = "none";
+    const t0 = performance.now();
+    (function step() { placeUndo(); if (performance.now() - t0 < 450) requestAnimationFrame(step); })();
+  };
+
+  function showUndo() {
+    if (undoTimer) clearTimeout(undoTimer);
+    // Keep the Undo button exactly 22px above the chat box, wherever the chat box currently is (keyboard closed or open).
+    // The position is measured from the real chat box; while the keyboard slides up or down, trackUndo() keeps following it.
+    toastEl.style.transition = "none";
+    placeUndo();
     toastEl.classList.add("show");
     undoTimer = setTimeout(() => {
       toastEl.classList.remove("show");
@@ -2731,9 +3702,15 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function addTask() {
+    if (subSlotEl) { addSubtask(); return; }   // the slot under a task is open: the box adds subtasks
     const val = inputEl.value.trim();
     if (!val) return;
     if (openPickerTaskId !== null) closeOpenPicker();
+    if (editingTaskId !== null) {
+      const edited = tasks.find((x) => x.id === editingTaskId);
+      if (edited) { applyEdit(edited, val); return; }
+      endEdit();   // that card is gone meanwhile: carry on as a normal add
+    }
     inputEl.value = "";
     tasks.push({ id: "t" + (uid++), text: val, icon: pendingIcon, repeatDays: null });
     setToggleIcon(null);
@@ -3039,11 +4016,13 @@ document.addEventListener("DOMContentLoaded", () => {
       autoShift();
       kb.classList.add("open");
       appEl.classList.add("kb-open");
+      if (window.__trackUndo) window.__trackUndo();
     }
     function close() {
       stopRepeat();
       kb.classList.remove("open");
       appEl.classList.remove("kb-open");
+      if (window.__trackUndo) window.__trackUndo();
     }
     document.addEventListener("focusin", (e) => { if (e.target === inputEl) open(); });
     document.addEventListener("focusout", (e) => { if (e.target === inputEl) close(); });
