@@ -24,7 +24,7 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
   header {
-    margin: 18px 14px 12px 14px;   /* 18px above "Today" (below the status bar); 12px margin under the title line = about 18px visible gap from the date text to the first task */
+    margin: 18px 14px 12px 14px;   /* 20px above "Today" (below the status bar); 12px margin under the title line = about 18px visible gap from the date text to the first task */
     padding: 0;
     flex-shrink: 0;
     display: flex;
@@ -341,6 +341,12 @@
   #dashboard-panel { padding-top: 14px; }   /* 14px + ~4px above the title letters = 18px visible gap from the panel's top border to the title */
   #dashboard-body { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; }
   .dash-card { flex: none; background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 16px; padding: 14px; }
+  .dash-narrow { padding: 10px 10px; }   /* Task Progressing and Task Scheduled cards: same shorter box, same side padding */
+  .dash-narrow .dash-sch-list { height: 78px; }
+  .dash-narrow .dash-sch-row { height: 26px; }
+  .dash-narrow .dash-tt-row { gap: 0; }   /* donuts sit closer together */
+  .dash-narrow .dash-tt { width: 20%; }
+  .dash-narrow .dash-title.dash-sch-title { margin-bottom: 6px; padding-left: 4px; }   /* same left position as the Task Progressing title (10px card padding + 4px) */
   .dash-wk-scroll { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .dash-wk-scroll::-webkit-scrollbar { display: none; }
   .dash-title { color: #F4F3EF; font-size: 14px; line-height: 18px; font-weight: 700; margin-bottom: 12px; }
@@ -402,6 +408,16 @@
   .dash-tt-cnt svg { width: 11px; height: 11px; flex: none; display: block; }
   .dash-mini span svg { vertical-align: -2px; }
   .dash-mini span { font-size: 12px; line-height: 14px; }
+  /* Scheduled tasks card: three rows visible, the rest (up to 30) scrolls */
+  .dash-sch-list { height: 90px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .dash-sch-row { display: flex; align-items: center; justify-content: flex-start; gap: 8px; height: 30px; padding: 0 6px 0 calc(10% - 10px); font-size: 15px; color: #F4F3EF; white-space: nowrap; }
+  .dash-sch-dot { flex: none; display: block; width: 6px; height: 6px; margin: 0 6px; border-radius: 50%; background: transparent; border: 1px solid rgba(244,243,239,0.35); box-sizing: border-box; }   /* empty list: dot + line, like a list */
+  .dash-sch-line { flex: none; display: block; width: 55%; height: 1px; background: rgba(244,243,239,0.35); }
+  .dash-sch-ph { color: #5E5E5E; font-size: 22px; font-weight: 300; line-height: 1; }
+  .dash-sch-b { color: #F4F3EF; font-size: 22px; font-weight: 300; line-height: 1; }
+  .dash-sch-t { font-size: 14px; color: #F4F3EF; overflow: hidden; text-overflow: ellipsis; }
+  .dash-sch-row b { color: #F5A524; font-size: 14px; font-weight: 700; }
+  .dash-sch-empty { height: 90px; display: flex; align-items: center; justify-content: center; color: #8C8C8C; font-size: 14px; }
   .dash-pair { flex: none; display: flex; gap: 8px; align-items: flex-start; }
   .dash-pair > .dash-card { flex: 1 1 0; min-width: 0; padding: 10px; }
   .dash-rt { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; }
@@ -802,6 +818,18 @@ document.addEventListener("DOMContentLoaded", () => {
   function syncOnce(task) {
     if (task.loopMode !== "once" || !task.onceDates || !task.onceDates.length) return;
     const t0 = todayStr(), keep = task.onceDates.filter((d) => d >= t0), days = onceDaysOf(keep) || [false, false, false, false, false, false, false];
+    // A red notification ends with its red loop: it can't come again after the last red day, so once the reminder time of that last day has passed
+    // (or the whole loop is already over) the bell is removed. Before that time it stays, so the last reminder still fires.
+    if (task.remindAt) {
+      const last = task.onceDates.slice().sort().pop();
+      let gone = last < t0;
+      if (last === t0) { const rd = new Date(); rd.setHours(task.remindAt.h, task.remindAt.m, task.remindAt.s || 0, 0); gone = rd.getTime() <= Date.now(); }
+      if (gone) {
+        task.remindAt = null;
+        if (task.loopId) { loopTemplates[task.loopId] = tplFromTask(task); saveLoopTemplates(); }
+        saveTasks();
+      }
+    }
     if (!keep.length) return;
     if (keep.length !== task.onceDates.length || (task.repeatDays || []).join() !== days.join()) {
       task.onceDates = keep; task.repeatDays = days;
@@ -2023,13 +2051,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // 1) Burn down: ticked vs crossed (counts)
       const pct = ticks + crosses ? (ticks / (ticks + crosses)) * 100 : 0;
-      // Progress donut (today): ticked = green, crossed = red, still on the list = no colour; counts on the sides, percent in the centre
+      // Progress donut (today): ticked = green, crossed = red, still on the list = no colour; only the count still left is shown, in the centre
       const tdy = last7[6].day, pend = tasks.length, tot = tdy.t + tdy.c + pend, CIRC = 2 * Math.PI * 30;
       const seg = (n, color, off) => n > 0 ? '<circle cx="40" cy="40" r="30" fill="none" stroke="' + color + '" stroke-width="12" stroke-dasharray="' + (n / tot * CIRC).toFixed(2) + ' ' + CIRC.toFixed(2) + '" stroke-dashoffset="' + (-off / tot * CIRC).toFixed(2) + '" transform="rotate(-90 40 40)"/>' : '';
       const lab = (n, from) => { if (!(n > 0)) return ''; const a = (-90 + (from + n / 2) / tot * 360) * Math.PI / 180; return '<text x="' + (40 + 44 * Math.cos(a)).toFixed(1) + '" y="' + (40 + 44 * Math.sin(a)).toFixed(1) + '" text-anchor="middle" dominant-baseline="central" fill="#A0A0A0" font-size="12.9" font-weight="700">' + n + '</text>'; };
       const progressCard = '<div class="dash-card dash-right"><div class="dash-title">To Do</div><div class="dash-donut">' +
         '<svg viewBox="-10 -10 100 100"><circle cx="40" cy="40" r="30" fill="none" stroke="rgba(244,243,239,0.12)" stroke-width="12"/>' + seg(tdy.t, "#4CC97F", 0) + seg(tdy.c, "#E5484D", tdy.t) +
-        lab(tdy.t, 0) + lab(tdy.c, tdy.t) + '<text x="40" y="40" text-anchor="middle" dominant-baseline="central" fill="#F4F3EF" font-size="22.6" font-weight="700">' + pend + '</text></svg></div></div>';
+        '<text x="40" y="40" text-anchor="middle" dominant-baseline="central" fill="#F4F3EF" font-size="22.6" font-weight="700">' + pend + '</text></svg></div></div>';
       sections.push('<div class="dash-top"><div class="dash-card dash-left"><div class="dash-title" style="display:flex;align-items:center;gap:6px">' + ic("tick", 16) + '<span>Vs</span>' + ic("cross", 16) + '</div><div class="dash-burn"><b style="color:#fff">' + ticks + '</b><div class="dash-burn-bar"><i style="width:' + pct + '%"></i></div><b style="color:#fff">' + crosses + '</b></div></div>' + progressCard + '</div>');
 
       // 2) Last 7 days: ticked vs crossed
@@ -2108,6 +2136,26 @@ document.addEventListener("DOMContentLoaded", () => {
         '<tr><th class="rowh">Recur</th>' + recurCnt.map(cell).join("") + '<td class="total">' + recurTotal + '</td></tr>' +
         '</tbody></table></div>';
     };
+    // Scheduled tasks: a loop (red or green) that was deleted from today's list - it waits for its next day. Newest first, 30 at most; 3 rows show, the rest scrolls.
+    const schMon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const schedList = Object.keys(loopTemplates).map((id) => {
+      const tpl = loopTemplates[id];
+      if (!tpl || !tpl.icon || tasks.some((t) => t.loopId === id)) return null;   // tasks without an emoji are left out
+      let vd = null;
+      if (tpl.loopMode === "once") {   // red loop: its next red day
+        if (!tpl.onceDates) return null;
+        const nx = tpl.onceDates.filter((d) => d > today).sort()[0];
+        if (!nx) return null;
+        vd = parseDateStr(nx);
+      } else {   // green (endless) loop: the next looped weekday after today
+        if (!tpl.repeatDays || !tpl.repeatDays.some(Boolean)) return null;
+        for (let q = 1; q <= 7 && !vd; q++) { const cd = parseDateStr(today); cd.setDate(cd.getDate() + q); if (tpl.repeatDays[cd.getDay()]) vd = cd; }
+        if (!vd) return null;
+      }
+      return { n: parseInt(id.replace(/\D/g, ""), 10) || 0, k: tpl.icon || String(tpl.text || "").slice(0, 8).replace(/</g, "&lt;"), d: schMon[vd.getMonth()] + " " + vd.getDate() + " " + ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][vd.getDay()] };
+    }).filter(Boolean).sort((a, b) => b.n - a.n).slice(0, 30);
+    const schedCard = ('<div class="dash-card dash-narrow"><div class="dash-title dash-sch-title" style="display:flex;align-items:center;gap:6px"><span>Scheduled</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F5A524" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/><circle cx="15.5" cy="15.5" r="2.5"/><path d="M15.5 14.5v1l.7.5"/></svg><span>Task</span></div>' +
+      ('<div class="dash-sch-list">' + schedList.map((s) => '<div class="dash-sch-row"><span>' + s.k + '</span><span class="dash-sch-t">Scheduled to ' + s.d + '</span></div>').join("") + (Array.from({ length: Math.max(0, 3 - schedList.length) }).map(() => '<div class="dash-sch-row"><i class="dash-sch-dot"></i><i class="dash-sch-line"></i></div>').join("")) + '</div>') + '</div>');
     sections.push(nrCard(true));
     sections.push(nrCard(false));
 
@@ -2133,13 +2181,19 @@ document.addEventListener("DOMContentLoaded", () => {
       for (let k = items.length; k < 5; k++) {
         items.push('<div class="dash-tt dash-tt-empty"><div class="dash-tt-ring"><div class="dash-tt-mid"><i class="dash-tt-dot"></i></div></div><div class="dash-tt-cnt"></div></div>');
       }
-      const ttCard = ('<div class="dash-card" style="padding:14px 10px 16px"><div class="dash-title" style="padding-left:4px;margin-bottom:14px;display:flex;align-items:center;gap:6px"><span>Task</span>' + SUBS_BTN_SVG + '<span>Progress</span></div>' +
+      const ttCard = ('<div class="dash-card dash-narrow" style="padding:10px 10px 10px"><div class="dash-title" style="padding-left:4px;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span>Progressing</span>' + SUBS_BTN_SVG + '<span>Task</span></div>' +
         '<div class="dash-tt-row">' + items.join("") + '</div>' + '</div>');
       // placed right after the "Daily ✓ & ×" card
       const di = sections.findIndex((h) => h.indexOf("<span>Daily</span>") >= 0);
       sections.splice(di >= 0 ? di + 1 : sections.length, 0, ttCard);
     }
 
+    // The Scheduled card goes right after the "Task Progress" card (after "Daily" if there is no Task Progress card)
+    {
+      const pi = sections.findIndex((h) => h.indexOf("dash-tt-row") >= 0);
+      const di2 = sections.findIndex((h) => h.indexOf("<span>Daily</span>") >= 0);
+      sections.splice(pi >= 0 ? pi + 1 : di2 >= 0 ? di2 + 1 : sections.length, 0, schedCard);
+    }
     dashboardBody.innerHTML = sections.join("");
     const wkScroll = dashboardBody.querySelector(".dash-wk-scroll"); if (wkScroll) wkScroll.scrollLeft = wkScroll.scrollWidth;   // start at the newest week
   }
@@ -2181,6 +2235,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   updateTitleDate();
   setInterval(updateTitleDate, 15000);
+  // Every 15 seconds: a red loop's notification disappears right after its last reminder has passed (the bell is removed from the card)
+  setInterval(() => {
+    try {
+      tasks.forEach((t) => {
+        if (expireSpentBell(t)) { const rw = listEl.querySelector('.row-wrap[data-task-id="' + t.id + '"]'); if (rw) updateBellBadge(rw, t); return; }
+        if (t.loopMode !== "once" || !t.remindAt) return;
+        syncOnce(t);
+        if (!t.remindAt) { const rw = listEl.querySelector('.row-wrap[data-task-id="' + t.id + '"]'); if (rw) updateBellBadge(rw, t); }
+      });
+    } catch (e) {}
+  }, 15000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) updateTitleDate(); });
 
   // History / Customize / Instruction panels start exactly 14px below the "Today" title and end 8px above the chat box.
@@ -2226,7 +2291,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!(m.fontBoundingBoxAscent > 0)) return;
       const baseline = r.top + (r.height - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
       const inkTop = baseline - m.actualBoundingBoxAscent;
-      const want = appEl.getBoundingClientRect().top + (parseFloat(getComputedStyle(appEl).paddingTop) || 0) + 18;
+      const want = appEl.getBoundingClientRect().top + (parseFloat(getComputedStyle(appEl).paddingTop) || 0) + 20;
       const mt = Math.max(0, 14 - (inkTop - want)) + "px";
       hdr.style.marginTop = mt;
       // The date and time stand on the same baseline as "Today": the space between that baseline and the first card is
@@ -2260,7 +2325,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!(m.fontBoundingBoxAscent > 0)) return;
         const fs = parseFloat(cs.fontSize) || 22;   // line-height is 1, so the line box is as tall as the font size
         const inkTop = (fs - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent - m.actualBoundingBoxAscent;
-        p.style.paddingTop = Math.max(0, 18 - inkTop) + "px";
+        p.style.paddingTop = Math.max(0, 20 - inkTop) + "px";   // 20px above the title letters in all four boxes
         // and the bottom of the title letters (the baseline) sits exactly 18px above the top of the first card
         const baselineFromTop = (fs - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
         h.parentElement.style.marginBottom = Math.max(0, 18 - (fs - baselineFromTop)) + "px";
@@ -2388,8 +2453,8 @@ document.addEventListener("DOMContentLoaded", () => {
     {
       emoji: "📊",
       heading: "The Dashboard",
-      steps: ["Tap the chart button at the top, the right-most of the four buttons, to open it - it sums up how you are doing, card by card", "To Do: how many tasks are still left today", "Tick Vs Cross: your total ticks against your total crosses, as a green and red bar", "Daily Tick and Cross: ticks and crosses for each day of this week, today highlighted", "Rate, Tick per Cross, Tick per Day and Tick per Week: four small tiles - the share of resolved tasks you ticked, your ticks for every cross, and your average ticks per day and per week", "Weekly Tick and Cross: a line chart of ticks and crosses week by week - seven weeks are in view, the newest at the right, and you scroll left to see older weeks", "Mostly Tick Task and Mostly Cross Task: the tasks you tick, and the tasks you cross, most often", "Task Progress: one donut per task that has subtasks and an emoji, in the same order as your list - the ring fills as subtasks get done, the number under it is done out of total, and a tick joins it once today's target is met (white, then blue when all are done)", "Notify and Recur, red: how many loop-once tasks fall on each weekday, and how many of them have a notification", "Notify and Recur, green: the same count for endless loops"],
-      note: "In Task Progress, scroll sideways to see more than five donuts; a dim dot marks an empty spot. The Task Progress card and the Notify and Recur tables count only the tasks and loops you have now; the other cards count your whole history."
+      steps: ["Tap the chart button at the top, the right-most of the four buttons, to open it", "To Do: tasks still left today", "Tick Vs Cross: your total ticks against your total crosses", "Daily Tick and Cross: this week, day by day", "Progressing Task: a donut for each task with subtasks - scroll sideways for more than five", "Scheduled Task: looped tasks you deleted, with the day each one comes back", "Rate, Tick per Cross, Tick per Day and Tick per Week: four small tiles", "Weekly Tick and Cross: a line chart, week by week - scroll left for older weeks", "Mostly Tick Task and Mostly Cross Task: the tasks you tick and cross most often", "Notify and Recur, red: loop-once tasks and notifications on each weekday", "Notify and Recur, green: the same for endless loops"],
+      note: "Progressing Task and the Notify and Recur tables count only your current tasks and loops; the other cards count your whole history."
     },
     {
       emoji: "😀",
@@ -2401,25 +2466,25 @@ document.addEventListener("DOMContentLoaded", () => {
       emoji: "🔔",
       heading: "Setting a Notification",
       steps: ["Press and hold a task without moving your finger, then tap \uD83D\uDD14 Notify - HH, MM and SS appear", "Tap HH, MM or SS - all three change to 00", "Press and hold a number, then slide sideways: left counts up, right counts down. Lift your finger and the number turns red - it's set", "Tap away anywhere else to close the picker and save your notification", "To remove it: slide a number back to 00, quick-swipe right on it, then tap away", "Quicker: hold the task and tap the Reset icon, the circular arrow between Notify and Recur - it clears Notify and Recur at once"],
-      note: "The time uses a 24-hour clock, so 18:30 means 6:30 PM. Watch the task itself - a small bell appears next to it once a notification is saved. A looping task repeats its notification on every looped day, unless you tick, cross or delete it before the time. On Android you'll be asked to allow notifications the first time. The Reset icon is dimmed and does nothing while the task has neither a notification nor a repeat, and turns bright white once either one is on."
+      note: "The time uses a 24-hour clock (18:30 = 6:30 PM). A small bell appears on the task once saved. A looping task repeats it on every looped day; a task with no loop notifies once, then its bell disappears. On Android you'll be asked to allow notifications the first time."
     },
     {
       emoji: "🔁",
       heading: "Loops: Once and Endless Recurs",
       steps: ["Press and hold a task without moving your finger, then tap Recur - a row of day letters opens", "Endless (green): tap the letters of the days you want - the task comes back on those days again and again", "Once (red): press and hold a letter instead of tapping - only that day turns red, and the loop ends after it", "Tap more letters to turn more days red - or green, if you started with a tap. Tap a lit letter again to turn that day off, then tap away anywhere else to close the picker and save", "To stop it repeating: hold the task again, turn off every highlighted letter, then tap away", "Quicker: hold the task and tap the Reset icon, the circular arrow between Notify and Recur - it clears Recur and Notify at once"],
-      note: "Red means once and green means endless. The colour follows the loop everywhere: the loop mark and the bell on the task, the Recur and Notify buttons, the HH MM SS fields, and the Notify and Recur tables on the Dashboard. A bell on a task with no loop is red. The first gesture you make sets the mode, and it stays until every day is off. A deadline - red days filled in a run - only exists for a task with subtasks; see Habitual and Critical Deadlines. When a looping task reappears, tasks that were ticked or crossed come first, a deleted one comes after, and a task with no record that day comes last. The Reset icon is dimmed while the task has neither a repeat nor a notification. Resetting a looping task stops it from coming back."
+      note: "Red means once and green means endless; the colour follows the loop on the task, the buttons and the Dashboard. The first gesture you make sets the mode until every day is off. A deadline (red days in a run) needs subtasks. A red loop's bell disappears after its last reminder. Reset stops a looping task from coming back."
     },
     {
       emoji: "⏳",
       heading: "Habitual and Critical Deadlines",
       steps: ["Press and hold a task without moving your finger, then tap Task and add its subtasks - a lock with a number appears on the task", "Press and hold the task again, then tap Recur - a row of day letters opens", "Habitual (green): tap the letters of the days you want - the task comes back on those days and its subtasks start undone each time", "Critical (red): press and hold the last day - every day after today up to it turns red, and the subtasks are spread over those days", "Tap another letter to move the last day forward or back - the red days refill from tomorrow up to it. A day in the middle can't be switched off by itself, and tapping today's letter removes the deadline", "Tap away anywhere else to close the picker and save", "The number on the lock is today's share - finish it and the lock turns into a tick, then swipe the task right"],
-      note: "There is no deadline without a subtask - a plain red loop only marks the days you pick. A red loop you already have turns into a Critical Deadline when you add its first subtask. Today is never red, so on the last day the red loop mark is gone - that is how you know it is the last day. Finishing early lowers the number for the days that follow. At midnight a task whose share was met is ticked for you, otherwise it is crossed."
+      note: "There is no deadline without a subtask. Today is never red, so on the last day the red mark is gone. Finishing early lowers the number for the days after. At midnight a task whose share was met is ticked, otherwise it is crossed."
     },
     {
-      emoji: "📅",
+      emoji: "🗓️",
       heading: "Scheduling a Task for Later",
       steps: ["Add the task as usual - it appears on today's list", "Press and hold the task without moving your finger, then tap Recur - a row of day letters opens", "Once (red): press and hold the letter of the day you want - it turns red. Today's letter can't be picked", "Endless (green): tap the letters of the days you want - they turn green", "Tap away anywhere else to close the picker and save - the loop mark appears on the task", "Tap the task twice quickly, like a double-click, to delete today's copy - the loop stays and brings the task back on the day you picked", "Subtasks: press and hold the task and tap Task - on a green task do it any time, on a red task do it when the day comes"],
-      note: "A red task gets its subtasks on the day because added early they would turn it into a deadline that also appears on the days in between. A green task brings its subtasks back undone on every green day, and anything you add or delete changes every future day - an extra subtask added on one day comes back on all the next ones. Want a reminder? Before you tap away, tap Notify and set a time. If you skip the delete and today is not a day you picked, midnight crosses today's copy for you and it counts as a cross in your stats. The day letters cover the next six days."
+      note: "A red task gets its subtasks on the day, not early. A green task brings its subtasks back undone every green day, and any change you make applies to all future days. Want a reminder? Tap Notify before you tap away. If today isn't a day you picked and you skip the delete, midnight crosses today's copy. The day letters cover the next six days."
     }
   ];
 
@@ -2614,9 +2679,18 @@ document.addEventListener("DOMContentLoaded", () => {
     emojiPanel.classList.toggle("show");
   });
 
+  // A one-time notification is used up once it has gone off: a task with no loop loses its bell as soon as the reminder time has passed,
+  // so when you open the app later the bell is gone. (Loops keep theirs; a red loop's bell goes after its last red day.)
+  function expireSpentBell(t) {
+    if (!t || !t.remindAt || t.loopId || (t.repeatDays && t.repeatDays.some(Boolean))) return false;
+    const rd = new Date(); rd.setHours(t.remindAt.h, t.remindAt.m, t.remindAt.s || 0, 0);
+    if (rd.getTime() > Date.now()) return false;
+    t.remindAt = null; saveTasks(); return true;
+  }
   function render() {
     if (openPickerTaskId !== null) closeOpenPicker();
     if (editingTaskId !== null) cancelEdit();
+    tasks.forEach(expireSpentBell);
     listEl.innerHTML = "";
     tasks.forEach((task, index) => {
       listEl.appendChild(renderRow(task, index));
@@ -3058,7 +3132,7 @@ document.addEventListener("DOMContentLoaded", () => {
     slot.innerHTML = "";
     const subs = task.subtasks || [];
     if (!subs.length) {
-      const e = document.createElement("div"); e.className = "sub-empty"; e.textContent = "Nothing here yet";
+      const e = document.createElement("div"); e.className = "sub-empty"; e.textContent = "Nothing here yet.";
       slot.appendChild(e); return;
     }
     subs.forEach((x) => slot.appendChild(makeSubItem(task, x)));
@@ -3247,6 +3321,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tt = tasks.find((x) => x.id === openPickerTaskId);
     if (tt && tv) {
       tt.remindAt = tv[0] === null ? null : { h: tv[0], m: tv[1], s: tv[2] };
+      if (tt.remindAt) expireSpentBell(tt);   // a time that has already passed today, on a task that doesn't loop later, can never go off: no bell at all
       if (tt.loopId && loopTemplates[tt.loopId]) {   // looping task: the reminder time repeats on every looped day
         loopTemplates[tt.loopId].remindAt = tt.remindAt ? { ...tt.remindAt } : null;
       }
