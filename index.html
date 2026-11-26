@@ -178,7 +178,7 @@
   .sub-slot { flex-shrink: 0; position: relative; display: flex; flex-direction: column; gap: 8px; margin: 0 6px; }   /* no box of its own, the Add To Do screen shows through; subtask cards sit 20px from the screen edge (14px list padding + 6px), 8px apart, so the subtask text starts on the same vertical line as the main task text (69px) */
   .sub-empty { text-align: center; font-style: italic; color: #A0A0A0; font-size: 14px; line-height: 18px; padding: 6px 0; }   /* plain text between the tasks, no box */
   .sub-item { position: relative; display: flex; align-items: center; gap: 12px; height: 61px; flex: none; padding: 0 14px 0 16px; background: #1F1F1F; border: 1px solid rgba(244, 243, 239, 0.3); border-radius: 16px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }   /* a card like the main screen's tasks */
-  .sub-item.drag { z-index: 3; background: #2A2A2A; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); }
+  .sub-item.drag { z-index: 3; background: #1F1F1F; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); }
   .sub-tick { position: relative; flex: none; width: 24px; height: 24px; padding: 0; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: none; }   /* a 24px box like History's tick/cross, the 18px circle is drawn inside it */
   .sub-tick::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; border: 1.6px solid #A0A0A0; background: transparent; }
   .sub-tick svg { position: relative; width: 10px; height: 10px; }
@@ -350,6 +350,9 @@
   .dash-wk-scroll { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .dash-wk-scroll::-webkit-scrollbar { display: none; }
   .dash-title { color: #F4F3EF; font-size: 14px; line-height: 18px; font-weight: 700; margin-bottom: 12px; }
+  .dash-title, .dash-title span { font-size: 14px !important; line-height: 18px !important; font-weight: 700 !important; }   /* every Dashboard chart title: same text size */
+  .dash-title svg { width: 16px; height: 16px; flex: none; }   /* and the same icon size */
+  .dash-title svg.dash-loop { width: 15px; height: 15px; }   /* the loop icon is a little smaller */
   .dash-chart { display: flex; justify-content: space-between; gap: 4px; }
   .dash-day { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
   .dash-bars { height: 112px; display: flex; align-items: flex-end; gap: 3px; }
@@ -375,9 +378,9 @@
   .dash-top { flex: none; display: flex; gap: 8px; align-items: stretch; }
   .dash-top > .dash-card { min-width: 0; padding: 10px; }
   .dash-left { flex: 1 1 0; display: flex; flex-direction: column; }
-  .dash-left .dash-burn { flex: 1; gap: 6px; }
+  .dash-left .dash-burn { flex: 1; gap: 6px; margin-bottom: 12px; }
   .dash-left .dash-burn b { font-size: 14px; line-height: 16px; }
-  .dash-top > .dash-right { order: -1; flex: none; width: 96px; height: 92px; box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; }
+  .dash-top > .dash-right { order: -1; flex: none; width: 103px; height: 86px; box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; }
   .dash-right .dash-title { margin-bottom: 0; text-align: left; }
   .dash-donut { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
   .dash-donut svg { width: 62px; height: 62px; flex: none; display: block; overflow: visible; }
@@ -1120,6 +1123,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // task/history list, so a task's loop survives even if it drops out of the
   // list for one or more days between its selected weekdays.
   let loopTemplates = loadLoopTemplates();
+
+  // Scheduled history: a task lands here only when it is a loop AND is deleted (not when it is ticked or crossed).
+  // It keeps up to 30 entries, newest first; an entry only leaves when a newer one pushes it past the 30th.
+  const SCHED_KEY = "todo-scheduled-v1";
+  function loadScheduledLog() {
+    try { const v = JSON.parse(localStorage.getItem(SCHED_KEY)); if (Array.isArray(v)) return v.filter((e) => e && e.k && e.date).slice(0, 30); } catch (e) {}
+    return [];
+  }
+  let scheduledLog = loadScheduledLog();
+  function saveScheduledLog() { try { localStorage.setItem(SCHED_KEY, JSON.stringify(scheduledLog)); } catch (e) {} }
+  let lastSchedId = null;
 
   const ARCHIVE_KEY = "todo-historyarchive-v1";
   const ARCHIVE_RETENTION_DAYS = 6;
@@ -2055,10 +2069,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const tdy = last7[6].day, pend = tasks.length, tot = tdy.t + tdy.c + pend, CIRC = 2 * Math.PI * 30;
       const seg = (n, color, off) => n > 0 ? '<circle cx="40" cy="40" r="30" fill="none" stroke="' + color + '" stroke-width="12" stroke-dasharray="' + (n / tot * CIRC).toFixed(2) + ' ' + CIRC.toFixed(2) + '" stroke-dashoffset="' + (-off / tot * CIRC).toFixed(2) + '" transform="rotate(-90 40 40)"/>' : '';
       const lab = (n, from) => { if (!(n > 0)) return ''; const a = (-90 + (from + n / 2) / tot * 360) * Math.PI / 180; return '<text x="' + (40 + 44 * Math.cos(a)).toFixed(1) + '" y="' + (40 + 44 * Math.sin(a)).toFixed(1) + '" text-anchor="middle" dominant-baseline="central" fill="#A0A0A0" font-size="12.9" font-weight="700">' + n + '</text>'; };
+      const t7 = last7.reduce((a, d) => a + d.day.t, 0), c7 = last7.reduce((a, d) => a + d.day.c, 0), pct7 = t7 + c7 ? (t7 / (t7 + c7)) * 100 : 0;
       const progressCard = '<div class="dash-card dash-right"><div class="dash-title">To Do</div><div class="dash-donut">' +
         '<svg viewBox="-10 -10 100 100"><circle cx="40" cy="40" r="30" fill="none" stroke="rgba(244,243,239,0.12)" stroke-width="12"/>' + seg(tdy.t, "#4CC97F", 0) + seg(tdy.c, "#E5484D", tdy.t) +
         '<text x="40" y="40" text-anchor="middle" dominant-baseline="central" fill="#F4F3EF" font-size="22.6" font-weight="700">' + pend + '</text></svg></div></div>';
-      sections.push('<div class="dash-top"><div class="dash-card dash-left"><div class="dash-title" style="display:flex;align-items:center;gap:6px">' + ic("tick", 16) + '<span>Vs</span>' + ic("cross", 16) + '</div><div class="dash-burn"><b style="color:#fff">' + ticks + '</b><div class="dash-burn-bar"><i style="width:' + pct + '%"></i></div><b style="color:#fff">' + crosses + '</b></div></div>' + progressCard + '</div>');
+      sections.push('<div class="dash-top"><div class="dash-card dash-left" style="position:relative"><div class="dash-title" style="display:flex;align-items:center;gap:6px">' + ic("tick", 16) + '<span>Vs</span>' + ic("cross", 16) + '</div><div class="dash-burn"><b style="color:#fff">' + t7 + '</b><div class="dash-burn-bar"><i style="width:' + pct7 + '%"></i></div><b style="color:#fff">' + c7 + '</b></div><span style="position:absolute;right:15px;bottom:6px;font-size:10px;line-height:12px;font-weight:600;color:#8C8C8C">7 Days</span></div>' + progressCard + '</div>');
 
       // 2) Last 7 days: ticked vs crossed
       const max = Math.max(1, ...weekDays.map((d) => Math.max(d.day.t, d.day.c)));
@@ -2095,6 +2110,7 @@ document.addEventListener("DOMContentLoaded", () => {
           (x.c > 0 ? '<text x="' + X(k).toFixed(1) + '" y="' + (Y(x.c) + (gAbove ? 14 : -7)).toFixed(1) + '" fill="' + cc + '" font-size="10" font-weight="600" text-anchor="middle">' + x.c + '</text>' : '') +
           '<text x="' + X(k).toFixed(1) + '" y="' + (H - 6) + '" fill="' + cc + '" font-size="12" font-weight="600" text-anchor="middle">W' + x.w + '</text>';
       }).join("") + future.map((w, k) => '<text x="' + X(weeks.length + k).toFixed(1) + '" y="' + (H - 6) + '" fill="#5A5A5A" font-size="12" font-weight="600" text-anchor="middle">W' + w + '</text>').join("");
+      sections.push('<div class="dash-card" style="position:relative;height:86px;box-sizing:border-box;padding-bottom:24px"><div class="dash-title" style="display:flex;align-items:center;gap:6px">' + ic("tick", 16) + '<span>Vs</span>' + ic("cross", 16) + '</div><div class="dash-burn" style="gap:10px"><b style="color:#fff;font-size:14px;line-height:16px">' + ticks + '</b><div class="dash-burn-bar"><i style="width:' + pct + '%"></i></div><b style="color:#fff;font-size:14px;line-height:16px">' + crosses + '</b></div><span style="position:absolute;right:15px;bottom:6px;font-size:10px;line-height:12px;font-weight:600;color:#8C8C8C">All Time</span></div>');
       sections.push('<div class="dash-card"><div class="dash-title" style="display:flex;align-items:center;gap:6px"><span>Weekly</span>' + ic("tick", 16) + '<span>&amp;</span>' + ic("cross", 16) + '</div><div class="dash-wk-scroll"><svg viewBox="0 0 ' + TW + ' ' + H + '" width="' + TW + '" height="' + H + '" style="display:block;flex:none"><line x1="' + padL + '" x2="' + (TW - padL) + '" y1="' + Y(0) + '" y2="' + Y(0) + '" stroke="rgba(244,243,239,0.18)" stroke-width="1"/>' + line("c", "#E5484D") + line("t", "#4CC97F") + labels + '</svg></div></div>');
 
       // 5) Most completed / most crossed emojis: two tables side by side (rank, emoji, count, percentage)
@@ -2102,7 +2118,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const emoCard = (iconName, idx) => {
         const rows = emoRows(idx);
         while (rows.length < 3) rows.push(null);
-        return '<div class="dash-card"><div class="dash-title" style="display:flex;align-items:center;gap:4px">Mostly ' + ic(iconName, 14) + ' Task</div>' + (rows.length
+        return '<div class="dash-card"><div class="dash-title" style="display:flex;align-items:center;gap:4px">Mostly ' + ic(iconName, 16) + ' Task</div>' + (rows.length
           ? '<div class="dash-rt-wrap"><table class="dash-rt"><thead><tr><th>#</th><th>Task</th><th>Count</th><th>%</th></tr></thead><tbody>' + rows.map((r, i) => !r ? '<tr><td>' + (i + 1) + '</td><td class="ph">\u2013</td><td class="ph">\u2013</td><td class="ph">\u2013</td></tr>' : '<tr><td>' + (i + 1) + '</td><td class="e">' + r.k + '</td><td>' + r.n + '</td><td>' + Math.round(r.p * 100) + '%</td></tr>').join("") + '</tbody></table></div>'
           : '<div class="dash-none">None yet.</div>') + '</div>';
       };
@@ -2130,7 +2146,7 @@ document.addEventListener("DOMContentLoaded", () => {
         days.forEach((on, d) => { if (on) { recurCnt[d]++; recurTotal++; if (info[id].notify) { notifyCnt[d]++; notifyTotal++; } } });
       });
       const col = red ? "#E5484D" : "#4CC97F";
-      return '<div class="dash-card"><div class="dash-title" style="display:flex;align-items:center;gap:6px">' + BELL_SVG.replace(/width="11" height="11"/, 'width="15" height="15"').replace(/currentColor/g, col) + '<span>&amp;</span>' + (red ? LOOP_ICON_RED : LOOP_ICON_SVG).replace('width="15" height="15"', 'width="14" height="14"') + '<span>Count</span></div><table class="dash-table"><thead><tr><th></th>' +
+      return '<div class="dash-card"><div class="dash-title" style="display:flex;align-items:center;gap:6px">' + BELL_SVG.replace(/width="11" height="11"/, 'width="15" height="15"').replace(/currentColor/g, col) + '<span>&amp;</span>' + (red ? LOOP_ICON_RED : LOOP_ICON_SVG).replace('width="15" height="15"', 'width="14" height="14"').replace('<svg ', '<svg class="dash-loop" ') + '<span>Count</span></div><table class="dash-table"><thead><tr><th></th>' +
         letters.map((l, d) => '<th' + (d === todayDow ? ' class="today"' : '') + '>' + l + '</th>').join("") + '<th>Total</th></tr></thead><tbody>' +
         '<tr><th class="rowh">Notify</th>' + notifyCnt.map(cell).join("") + '<td class="total">' + notifyTotal + '</td></tr>' +
         '<tr><th class="rowh">Recur</th>' + recurCnt.map(cell).join("") + '<td class="total">' + recurTotal + '</td></tr>' +
@@ -2138,22 +2154,10 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     // Scheduled tasks: a loop (red or green) that was deleted from today's list - it waits for its next day. Newest first, 30 at most; 3 rows show, the rest scrolls.
     const schMon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const schedList = Object.keys(loopTemplates).map((id) => {
-      const tpl = loopTemplates[id];
-      if (!tpl || !tpl.icon || tasks.some((t) => t.loopId === id)) return null;   // tasks without an emoji are left out
-      let vd = null;
-      if (tpl.loopMode === "once") {   // red loop: its next red day
-        if (!tpl.onceDates) return null;
-        const nx = tpl.onceDates.filter((d) => d > today).sort()[0];
-        if (!nx) return null;
-        vd = parseDateStr(nx);
-      } else {   // green (endless) loop: the next looped weekday after today
-        if (!tpl.repeatDays || !tpl.repeatDays.some(Boolean)) return null;
-        for (let q = 1; q <= 7 && !vd; q++) { const cd = parseDateStr(today); cd.setDate(cd.getDate() + q); if (tpl.repeatDays[cd.getDay()]) vd = cd; }
-        if (!vd) return null;
-      }
-      return { n: parseInt(id.replace(/\D/g, ""), 10) || 0, k: tpl.icon || String(tpl.text || "").slice(0, 8).replace(/</g, "&lt;"), d: schMon[vd.getMonth()] + " " + vd.getDate() + " " + ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][vd.getDay()] };
-    }).filter(Boolean).sort((a, b) => b.n - a.n).slice(0, 30);
+    const schedList = scheduledLog.slice(0, 30).map((e) => {
+      const vd = parseDateStr(e.date);
+      return { k: String(e.k).replace(/</g, "&lt;"), d: schMon[vd.getMonth()] + " " + vd.getDate() + " " + ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][vd.getDay()] };
+    });
     const schedCard = ('<div class="dash-card dash-narrow"><div class="dash-title dash-sch-title" style="display:flex;align-items:center;gap:6px"><span>Scheduled</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F5A524" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/><circle cx="15.5" cy="15.5" r="2.5"/><path d="M15.5 14.5v1l.7.5"/></svg><span>Task</span></div>' +
       ('<div class="dash-sch-list">' + schedList.map((s) => '<div class="dash-sch-row"><span>' + s.k + '</span><span class="dash-sch-t">Scheduled to ' + s.d + '</span></div>').join("") + (Array.from({ length: Math.max(0, 3 - schedList.length) }).map(() => '<div class="dash-sch-row"><i class="dash-sch-dot"></i><i class="dash-sch-line"></i></div>').join("")) + '</div>') + '</div>');
     sections.push(nrCard(true));
@@ -3652,6 +3656,22 @@ document.addEventListener("DOMContentLoaded", () => {
     tasks = tasks.filter(t => t.id !== task.id);
     lastRemoved = { task: removedTask, index: idx };
     lastHistoryId = addHistoryEntry(removedTask, action || "cross", skipHistory);
+    lastSchedId = null;
+    if (actionType === "delete" && removedTask.loopId && removedTask.icon) {   // Loop + Delete only: a tick or a cross never schedules
+      const td = todayStr();
+      let nextDate = null;
+      if (removedTask.loopMode === "once") {
+        nextDate = (removedTask.onceDates || []).filter((d) => d > td).sort()[0] || null;
+      } else if (removedTask.repeatDays && removedTask.repeatDays.some(Boolean)) {
+        for (let q = 1; q <= 7 && !nextDate; q++) { const ds = addDaysToDateStr(td, q); if (removedTask.repeatDays[parseDateStr(ds).getDay()]) nextDate = ds; }
+      }
+      if (nextDate) {
+        lastSchedId = "s" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
+        scheduledLog.unshift({ id: lastSchedId, k: removedTask.icon, date: nextDate });
+        if (scheduledLog.length > 30) scheduledLog.length = 30;
+        saveScheduledLog();
+      }
+    }
     saveTasks();
     showUndo();
 
@@ -3751,6 +3771,7 @@ document.addEventListener("DOMContentLoaded", () => {
   addTapHandler(undoBtn, () => {
     if (!lastRemoved) return;
     tasks.splice(Math.min(lastRemoved.index, tasks.length), 0, lastRemoved.task);
+    if (lastSchedId) { scheduledLog = scheduledLog.filter((e) => e.id !== lastSchedId); saveScheduledLog(); lastSchedId = null; }
     if (lastHistoryId) {
       ensureHistoryFresh();
       history.entries = history.entries.filter(e => e.id !== lastHistoryId);
